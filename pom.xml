@@ -1,0 +1,100 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+	<name>Mongo Genotype DataBase</name>
+	<groupId>fr.cirad</groupId>
+	<artifactId>mgdb</artifactId>
+	<version>1.0-RELEASE</version>
+	<description>
+	</description>
+	<developers>
+		<developer>
+			<name>Guilhem SEMPERE</name>
+		</developer>
+	</developers>
+
+	<dependencies>
+
+		<dependency>
+			<groupId>org.mongodb</groupId>
+			<artifactId>mongo-java-driver</artifactId>
+			<version>3.2.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.data</groupId>
+			<artifactId>spring-data-mongodb</artifactId>
+			<version>1.7.2.RELEASE</version>
+		</dependency>
+	
+		<dependency>
+			<groupId>org.biojava</groupId>
+			<artifactId>biojava3-core</artifactId>
+			<version>3.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>net.sourceforge.jexcelapi</groupId>
+			<artifactId>jxl</artifactId>
+			<version>2.6.10</version>
+		</dependency>
+	</dependencies>
+
+	<repositories>
+		<repository>
+			<id>sonatype-snapshot</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+		</repository>
+		<repository>
+			<id>plovdiv</id>
+			<url>http://ambit.uni-plovdiv.bg:8083/nexus/content/repositories/thirdparty/</url>
+		</repository>
+		<repository>
+			<id>spring-snapshot</id>
+			<url>http://repo.springsource.org/libs-snapshot</url>
+		</repository>
+		<repository>
+			<id>ibiblio</id>
+			<url>http://mirrors.ibiblio.org/pub/mirrors/maven2</url>
+		</repository>
+		<repository>
+			<id>FZI Repository</id>
+			<url>http://mavenrepo.fzi.de/semweb4j.org/repo/</url>
+		</repository>
+		<repository>
+			<id>java.net-m2</id>
+			<url>http://download.java.net/maven/2</url>
+		</repository>
+		<repository>
+			<id>xerial</id>
+			<url>http://maven.xerial.org/repository/artifact</url>
+		</repository>
+		<repository>
+			<id>hadoop-bam</id>
+			<url>http://hadoop-bam.sourceforge.net/maven/</url>
+		</repository>
+	</repositories>
+
+<!--   <build> -->
+<!--     <sourceDirectory>src</sourceDirectory> -->
+<!-- 	   <plugins> -->
+<!-- 	     <plugin> -->
+<!-- 	       <artifactId>maven-compiler-plugin</artifactId> -->
+<!-- 	       <version>3.1</version> -->
+<!-- 	       <configuration> -->
+<!-- 	         <source/> -->
+<!-- 	         <target/> -->
+<!-- 	       </configuration> -->
+<!-- 	     </plugin> -->
+<!-- 		 <plugin> -->
+<!-- 			<artifactId>maven-compiler-plugin</artifactId> -->
+<!-- 			<configuration> -->
+<!-- 				<source>1.7</source> -->
+<!-- 				<target>1.7</target> -->
+<!-- 			</configuration> -->
+<!-- 		 </plugin> -->
+<!--     </plugins> -->
+<!--   </build> -->
+
+</project>
