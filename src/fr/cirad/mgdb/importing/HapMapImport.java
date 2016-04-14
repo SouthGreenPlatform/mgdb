@@ -240,7 +240,7 @@ public class HapMapImport {
 
 					if (count == 0)
 					{
-						nNumberOfVariantsToSaveAtOnce = Math.max(1, 30000 / hmFeature.getSampleIDs().length);
+						nNumberOfVariantsToSaveAtOnce = Math.max(1, 30000 / Math.max(1, hmFeature.getSampleIDs().length));
 						LOG.info("Importing by chunks of size " + nNumberOfVariantsToSaveAtOnce);
 					}
 					if (count % nNumberOfVariantsToSaveAtOnce == 0)
