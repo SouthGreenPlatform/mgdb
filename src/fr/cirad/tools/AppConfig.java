@@ -17,8 +17,6 @@
 package fr.cirad.tools;
 
 import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.context.annotation.Bean;
-//import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
@@ -28,7 +26,6 @@ import org.springframework.core.env.Environment;
  * The Class AppConfig.
  */
 @Configuration
-//@ComponentScan(basePackages = { "fr.cirad.*" })
 @PropertySource("classpath:config.properties")
 public class AppConfig {
 
@@ -37,7 +34,7 @@ public class AppConfig {
 	private Environment env;
 
 /**
- * Db server cleanup.
+ * List of db servers to cleanup.
  *
  * @return the string
  */
