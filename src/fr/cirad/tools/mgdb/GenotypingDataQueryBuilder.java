@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -41,90 +41,89 @@ import fr.cirad.mgdb.model.mongo.subtypes.VariantRunData.VariantRunDataId;
 import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class GenotypingDataQueryBuilder.
  */
 public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 {
-	
+
 	/** The Constant LOG. */
 	protected static final Logger LOG = Logger.getLogger(GenotypingDataQueryBuilder.class);
-	
+
 	/** The Constant MAX_NUMBER_OF_GENOTYPES_TO_QUERY_AT_ONCE. */
 	static final private int MAX_NUMBER_OF_GENOTYPES_TO_QUERY_AT_ONCE = 1000000;
-	
+
 	/** The Constant NUMBER_OF_SIMULTANEOUS_QUERY_THREADS. */
 	static final private int NUMBER_OF_SIMULTANEOUS_QUERY_THREADS = 5;
 
 	/** The Constant AGGREGATION_QUERY_REGEX_APPLY_TO_ALL_IND_SUFFIX. */
-	static final public String AGGREGATION_QUERY_REGEX_APPLY_TO_ALL_IND_SUFFIX = "_ALL_"; // used to differentiate aggregation query with $and operator 
-	
+	static final public String AGGREGATION_QUERY_REGEX_APPLY_TO_ALL_IND_SUFFIX = "_ALL_"; // used to differentiate aggregation query with $and operator
+
 	/** The Constant AGGREGATION_QUERY_REGEX_APPLY_TO_AT_LEAST_ONE_IND_SUFFIX. */
 	static final public String AGGREGATION_QUERY_REGEX_APPLY_TO_AT_LEAST_ONE_IND_SUFFIX = "_ATLO_";  // used to differentiate find query with $or operator
-	
+
 	/** The Constant AGGREGATION_QUERY_NEGATION_SUFFIX. */
 	static final public String AGGREGATION_QUERY_NEGATION_SUFFIX = "_NEG_";	// used to indicate that the match operator should be negated in the aggregation query
-	
+
 	/** The Constant AGGREGATION_QUERY_WITHOUT_ABNORMAL_HETEROZYGOSITY. */
 	static final public String AGGREGATION_QUERY_WITHOUT_ABNORMAL_HETEROZYGOSITY = "WITHOUT_ABNORMAL_HETEROZYGOSITY";
 
 	/** The mongo template. */
 	private MongoTemplate mongoTemplate;
-	
+
 	/** The genotyping project. */
 	private GenotypingProject genotypingProject;
-	
+
 	/** The individual index to sample list map. */
 	private HashMap<Integer, Collection<Integer>> individualIndexToSampleListMap;
-	
+
 	/** The variant cursor. */
-	private DBCursor variantCursor; 
-	
+	private DBCursor variantCursor;
+
 	/** The operator. */
 	private String operator;
-	
+
 	/** The genotype quality threshold. */
 	private Integer genotypeQualityThreshold;
-	
+
 	/** The read depth threshold. */
 	private Integer readDepthThreshold;
-	
+
 	/** The missing data. */
 	private Double missingData;
-	
+
 	/** The minmaf. */
 	private Float minmaf;
-	
+
 	/** The maxmaf. */
 	private Float maxmaf;
-	
+
 	/** The gene names. */
 	private String geneNames;
-	
+
 	/** The variant effects. */
 	private String variantEffects;
-	
+
 	/** The selected individuals. */
 	private List<String> selectedIndividuals;
-	
+
 	/** The project effect annotations. */
 	private Collection<String> projectEffectAnnotations;
-	
+
 	/** The fields to return. */
 	private Collection<String> fieldsToReturn;
-	
+
 	/** The n total variant count. */
 	private long nTotalVariantCount = 0;
-	
+
 	/** The n n variants queried at once. */
 	private int nNVariantsQueriedAtOnce = 0;	/* will remain so if we are working on the full dataset */
-	
+
 	/** The current tagged variant. */
 	private Comparable currentTaggedVariant = null;
-	
+
 	/**
-	 *  
+	 *
 	 *
 	 * @param sModule the module
 	 * @param projId the proj id
@@ -157,15 +156,15 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 		this.fieldsToReturn = fieldsToReturn;
 		this.genotypingProject = (GenotypingProject) mongoTemplate.findById(Integer.valueOf(projId), GenotypingProject.class);
 		this.individualIndexToSampleListMap = new HashMap<Integer, Collection<Integer>>();
-		
-		int nSampleCount = 0;		
+
+		int nSampleCount = 0;
 		for (int k=0; k<selectedIndividuals.size(); k++)
 		{
 			List<Integer> sampleIndexes = genotypingProject.getIndividualSampleIndexes(selectedIndividuals.get(k));
 			individualIndexToSampleListMap.put(k, sampleIndexes);
 			nSampleCount += sampleIndexes.size();
 		}
-				
+
 		this.nTotalVariantCount = tempExportColl.count();
 		if (this.nTotalVariantCount == 0)
 		{
@@ -185,7 +184,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 			this.variantCursor = tempExportColl.find().addOption(Bytes.QUERYOPTION_NOTIMEOUT);
 		}
     }
-	
+
 	/**
 	 * Gets the number of queries.
 	 *
@@ -204,7 +203,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	{
 		throw new UnsupportedOperationException("Removal not supported");
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see java.util.Iterator#hasNext()
 	 */
@@ -246,12 +245,12 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 				cleanOperator = cleanOperator.substring(0, cleanOperator.length() - AGGREGATION_QUERY_WITHOUT_ABNORMAL_HETEROZYGOSITY.length());
 			}
 		}
-		        
+
 		List<DBObject> pipeline = new ArrayList<DBObject>();
 		BasicDBList initialMatchList = new BasicDBList();
         if (mongoTemplate.count(null, GenotypingProject.class) != 1)
 			initialMatchList.add(new BasicDBObject("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID, genotypingProject.getId()));
-    	
+
         if (nNVariantsQueriedAtOnce == 0)
         {	// splitting using tagged variants because we have no filter on variant features
         	BasicDBList chunkMatchAndList = new BasicDBList();
@@ -264,20 +263,20 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
         }
         else
         {	// splitting using previously applied variant feature filter
-	        ArrayList<Comparable> aVariantSubList = new ArrayList<Comparable>();	
+	        ArrayList<Comparable> aVariantSubList = new ArrayList<Comparable>();
 	    	int variantIndex = 0;
 	    	while (variantCursor.hasNext() && variantIndex<nNVariantsQueriedAtOnce)
 	    	{
 	    		aVariantSubList.add((Comparable) variantCursor.next().get("_id"));
 	    		variantIndex++;
 	    	}
-	    	
+
 	    	// if (predefinedVariantList != null && predefinedVariantList.size() > 0)
 	        if (aVariantSubList.size() > 0)
 				initialMatchList.add(new BasicDBObject("_id." + VariantRunDataId.FIELDNAME_VARIANT_ID, new BasicDBObject("$in", aVariantSubList)));
         }
-		
-		/* Step to match variants according to annotations */			
+
+		/* Step to match variants according to annotations */
 		if (projectEffectAnnotations.size() > 0 && (geneNames.length() > 0 || variantEffects.length() > 0))
 		{
 			if (geneNames.length() > 0)
@@ -295,11 +294,11 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 				initialMatchList.add(new BasicDBObject(VariantRunData.SECTION_ADDITIONAL_INFO + "." + VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME, new BasicDBObject("$in", MgdbDao.split(variantEffects, ","))));
 		}
 		pipeline.add(new BasicDBObject("$match", new BasicDBObject("$and", initialMatchList)));
-		
+
         boolean fMultiRunProject = genotypingProject.getRuns().size() > 1;
         boolean fNeedProjectStage = fMultiRunProject || fieldsToReturn.size() > 0 || (genotypeQualityThreshold != null && genotypeQualityThreshold > 1) || (readDepthThreshold != null && readDepthThreshold > 1) || (cleanOperator != null && !fZygosityRegex);
-		
-        DBObject project = new BasicDBObject();        
+
+        DBObject project = new BasicDBObject();
         for (int k = 0; k < selectedIndividuals.size(); k++)
             for (Integer individualSample : individualIndexToSampleListMap.get(k))
             {
@@ -328,18 +327,18 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 				condComparisonList.add(new BasicDBObject("$or", conditionsWhereGtIsAssimilatedToMissing));
 				condComparisonList.add("");
 				condComparisonList.add("$" + pathToGT);
-                
+
                 project.put(fMultiRunProject ? pathToGT.replaceAll("\\.", "¤") : pathToGT, conditionsWhereGtIsAssimilatedToMissing.size() == 0 ? 1 : new BasicDBObject("$cond", condComparisonList));
             }
-        
+
 		String separator = fMultiRunProject ? "¤" : ".";
         if (fNeedProjectStage)
         {	// we will need to use the $project stage, either to return specific fields (not simply counting but actually getting records), or because we need to compute new fields on the fly for specific filters
 			for (String field : fieldsToReturn)
 				if (field != null && field.length() > 0)
-					project.put(field.replaceAll("\\.", "¤"), "$" + field);	        
+					project.put(field.replaceAll("\\.", "¤"), "$" + field);
         }
-        
+
     	// Group records by variant id
 		DBObject groupFields = new BasicDBObject("_id", "$_id." + VariantRunDataId.FIELDNAME_VARIANT_ID);
     	BasicDBList uniformityList = new BasicDBList();
@@ -350,7 +349,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	    	{
 				String pathToGT = VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + individualSample + "." + SampleGenotype.FIELDNAME_GENOTYPECODE;
 				groupFields.put(pathToGT.replaceAll("\\.", "¤"), new BasicDBObject("$addToSet", "$" + pathToGT));
-				
+
     			// Check uniformity between genotypes related to a same individual
 				if (firstSample == null)
 					firstSample = individualSample;
@@ -364,7 +363,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 		}
 		if (uniformityList.size() > 0)
 			project.put("u", new BasicDBObject("$and", uniformityList));
-		
+
 		if (fMultiRunProject)
 			pipeline.add(new BasicDBObject("$group", groupFields));
 		if (fNeedProjectStage && !project.keySet().isEmpty())
@@ -377,14 +376,14 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
           		BasicDBList genotypeMatchList = new BasicDBList();
     			if (uniformityList.size() > 0)
     				genotypeMatchList.add(new BasicDBObject("u", true));
-            	
+
  				// Query to match specific genotype code with zygosity regex (homozygous var, homozygous ref, heterozygous)
-				if (fZygosityRegex)	
+				if (fZygosityRegex)
 				{
 					BasicDBList orSelectedGenotypeRegexAndFieldExistList = new BasicDBList();
 					DBObject orFinalSelectedGenotypeRegexAndFieldExist = new BasicDBObject();
 					DBObject andFinalSelectedGenotypeRegexAndFieldExist = new BasicDBObject();
-				
+
 					for (int j=0; j<selectedIndividuals.size(); j++)
 					{
 						for (Integer individualSample : individualIndexToSampleListMap.get(j))
@@ -395,15 +394,15 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 				    		DBObject clause2 = new BasicDBObject(pathToGT, new BasicDBObject("$regex", cleanOperator));
 							orList.add(clause1);
 							orList.add(clause2);
-							orSelectedGenotypeRegexAndFieldExistList.add(new BasicDBObject("$or", orList));				
+							orSelectedGenotypeRegexAndFieldExistList.add(new BasicDBObject("$or", orList));
 				    	}
 					}
-										
+
 					if (fOr)
-					{		
+					{
 						orFinalSelectedGenotypeRegexAndFieldExist.put("$or", orSelectedGenotypeRegexAndFieldExistList);
 						genotypeMatchList.add(orFinalSelectedGenotypeRegexAndFieldExist);
-				    }			
+				    }
 					else
 					{
 						andFinalSelectedGenotypeRegexAndFieldExist.put("$and", orSelectedGenotypeRegexAndFieldExistList);
@@ -438,7 +437,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 							condList3.add(new BasicDBObject("$eq", new Object[] { "$" + pathToGT, fMultiRunProject ? new Object[] {"0/1"} : "0/1" } ));
 							condList3.add(1);
 							condList3.add(0);
-							
+
 							totalHR.add(new BasicDBObject("$cond", condList1));
 							totalHV.add(new BasicDBObject("$cond", condList2));
 							totalHZ.add(new BasicDBObject("$cond", condList3));
@@ -449,15 +448,15 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
                     project.put("HV", new BasicDBObject("$add", totalHV));
                     project.put("HZ", new BasicDBObject("$add", totalHZ));
 
-					/* 
+					/*
 					 * Match step to get individuals which respond to different case.
 					 * We don't want individuals that have only genotype 1/1 and 0/1 or 0/0 and 0/1.
-					 * -/- Example -\- 
+					 * -/- Example -\-
 					 * To match case 1 "at least all kind of genotypes are present " :
-					 * { "$match" : { "$or" : [ { "$and" : [ { "HR" : { "$gt" : 0}} , 
+					 * { "$match" : { "$or" : [ { "$and" : [ { "HR" : { "$gt" : 0}} ,
 					 * { "HV" : { "$gt" : 0}} , { "HZ" : { "$gt" : 0}}]}]}}
 					 */
-					
+
                     BasicDBList orList = new BasicDBList();
                     BasicDBList andListCase1 = new BasicDBList();
                     andListCase1.add(new BasicDBObject("HR", new BasicDBObject("$gt", 0)));
@@ -518,7 +517,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
                 {
                 	nTotalSampleCount++;
                 	String pathToGT = VariantRunData.FIELDNAME_SAMPLEGENOTYPES + separator + individualSample + separator + SampleGenotype.FIELDNAME_GENOTYPECODE;
-                	
+
                     calledGenotypeTotalCountList.add(new BasicDBObject("$cmp", new Object[] {"$" + pathToGT, fMultiRunProject ? new Object[] {""} : ""}));
                     if (fMafRequested)
                     {
@@ -535,27 +534,27 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
                 }
             }
 
-            mafAndMissingDataProject.put("t", new BasicDBObject("$add", calledGenotypeTotalCountList));            
+            mafAndMissingDataProject.put("t", new BasicDBObject("$add", calledGenotypeTotalCountList));
            	pipeline.add(new BasicDBObject("$project", mafAndMissingDataProject));
 
-            BasicDBList mafAndMissingDataDBList = new BasicDBList();            
+            BasicDBList mafAndMissingDataDBList = new BasicDBList();
             if (missingData != null && missingData < 100)
             {
                 double minimumGenotypeCount = nTotalSampleCount - (nTotalSampleCount * missingData) / 100;
 //                LOG.debug("Requiring " + minimumGenotypeCount + " existing genotypes out of " + nTotalSampleCount);
                 mafAndMissingDataDBList.add(new BasicDBObject("t", new BasicDBObject("$gte", minimumGenotypeCount)));
             }
-            
+
             if (fMafRequested)
             {
                 mafAndMissingDataProject.put("m", new BasicDBObject("$add", mafTotalCountList));
-                
+
             	// avoid dividing by zero
                 BasicDBList totalAlleleCount = new BasicDBList();
                 totalAlleleCount.add(new BasicDBObject("$eq", ((Object) (new Object[] { "$t", 0 }))));
                 totalAlleleCount.add(null);
                 totalAlleleCount.add("$t");
-                
+
                 BasicDBObject projectFieldConditionMaf = new BasicDBObject("f", new BasicDBObject("$divide", (new Object[] { new BasicDBObject("$multiply", (new Object[] { "$m", 50 })), new BasicDBObject("$cond", totalAlleleCount) })));
                 if (missingData != null && missingData < 100)
                     projectFieldConditionMaf.put("t", 1);

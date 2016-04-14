@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -24,18 +24,17 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class Individual.
  */
 @Document(collection = "individuals")
 @TypeAlias("I")
 public class Individual
-{	
-	
+{
+
 	/** The Constant FIELDNAME_POPULATION. */
 	public final static String FIELDNAME_POPULATION = "po";
-	
+
 	/** The Constant FIELDNAME_PROBLEM. */
 	public final static String FIELDNAME_PROBLEM = "pb";
 
@@ -50,7 +49,7 @@ public class Individual
 	/** The problems. */
 	@Field(FIELDNAME_PROBLEM)
 	private LinkedHashMap<Integer /*project id*/, String /*problem description*/> problems;
-	
+
 	/**
 	 * Instantiates a new individual.
 	 *
@@ -68,7 +67,7 @@ public class Individual
 	public String getId() {
 		return id;
 	}
-	
+
 	/**
 	 * Sets the id.
 	 *
@@ -95,7 +94,7 @@ public class Individual
 	public void setPopulation(String population) {
 		this.population = population;
 	}
-	
+
 	/**
 	 * Gets the problems.
 	 *
@@ -116,7 +115,7 @@ public class Individual
 	public Set<Integer> getProblematicProjects() {
 		return getProblems().keySet();
 	}
-	
+
 	/**
 	 * Checks if is problematic.
 	 *
@@ -125,7 +124,7 @@ public class Individual
 	public boolean isProblematic() {
 		return getProblems().keySet().size() > 0;
 	}
-	
+
 	/**
 	 * Checks if is problematic in project.
 	 *
@@ -148,7 +147,7 @@ public class Individual
 		else
 			getProblems().put(projId, problem);
 	}
-	
+
 	/**
 	 * Gets the problem.
 	 *
@@ -158,7 +157,7 @@ public class Individual
 	public String getProblem(int projId) {
 		return getProblems().get(projId);
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
@@ -166,10 +165,10 @@ public class Individual
 	{
 		if (this == o)
 			return true;
-		
+
 		if (o == null || !(o instanceof Individual))
 			return false;
-		
+
 		return getId().equals(((Individual)o).getId());
 	}
 }

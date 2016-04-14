@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -61,12 +61,11 @@ import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class VcfImport.
  */
 public class VcfImport {
-	
+
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(VariantData.class);
 
@@ -233,11 +232,11 @@ public class VcfImport {
 			LOG.info(info);
 			progress.addStep(info);
 			progress.moveToNextStep();
-			
+
 			HashMap<String, Comparable> existingVariantIDs = new HashMap<String, Comparable>();
 			if (mongoTemplate.count(null, VariantData.class) > 0)
 			{	// there are already variants in the database: build a list of all existing variants, finding them by ID is by far most efficient
-				long beforeReadingAllVariants = System.currentTimeMillis();										
+				long beforeReadingAllVariants = System.currentTimeMillis();
 				Query query = new Query();
 				query.fields().include("_id").include(VariantData.FIELDNAME_REFERENCE_POSITION).include(VariantData.FIELDNAME_TYPE);
 				Iterator<VariantData> variantIterator = mongoTemplate.find(query, VariantData.class).iterator();
@@ -272,13 +271,13 @@ public class VcfImport {
 			{
 				VariantContext vcfEntry = it.next();
 				if (!vcfEntry.isVariant())
-					continue; // skip non-variant positions				
-                
+					continue; // skip non-variant positions
+
 				String variantDescForPos = vcfEntry.getType().toString() + "::" + vcfEntry.getChr() + "::" + vcfEntry.getStart();
 				try
 				{
 					Comparable variantId = existingVariantIDs.get(variantDescForPos);
-					VariantData variant = variantId == null ? null : mongoTemplate.findById(variantId, VariantData.class);					
+					VariantData variant = variantId == null ? null : mongoTemplate.findById(variantId, VariantData.class);
 					if (vcfEntry.hasID())
 						fAtLeastOneIDProvided = true;
 					if (variant == null)
@@ -356,7 +355,7 @@ public class VcfImport {
 				for (VariantData vd : unsavedVariants)
 					mongoTemplate.save(vd);
 				for (VariantRunData run : unsavedRuns)
-					mongoTemplate.save(run);							
+					mongoTemplate.save(run);
 			}
 
 			// save project data
@@ -545,7 +544,7 @@ public class VcfImport {
 			if (phasedGroup == null || (!isPhased && !genotype.isNoCall()))
 				phasingGroup.put(sIndividual, variantToFeed.getId());
 			String gtCode = VariantData.rebuildVcfFormatGenotype(vc.getAlternateAlleles(), genotype.getAlleles(), genotype.getGenotypeString(), false);
-			SampleGenotype aGT = new SampleGenotype(gtCode);			
+			SampleGenotype aGT = new SampleGenotype(gtCode);
 			if (isPhased) {
 				aGT.getAdditionalInfo().put(VariantData.GT_FIELD_PHASED_GT, VariantData.rebuildVcfFormatGenotype(vc.getAlternateAlleles(), genotype.getAlleles(), genotype.getGenotypeString(), true));
 				aGT.getAdditionalInfo().put(VariantData.GT_FIELD_PHASED_ID, phasingGroup.get(sIndividual));

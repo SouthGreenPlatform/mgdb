@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -54,12 +54,11 @@ import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class HapMapImport.
  */
 public class HapMapImport {
-	
+
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(VariantData.class);
 
@@ -125,7 +124,7 @@ public class HapMapImport {
 		long before = System.currentTimeMillis();
 		ProgressIndicator progress = new ProgressIndicator(m_processID, new String[] {"Initializing import"});	// better to add it straight-away so the JSP doesn't get null in return when it checks for it (otherwise it will assume the process has ended)
 		ProgressIndicator.registerProgressIndicator(progress);
-		progress.setPercentageEnabled(false);		
+		progress.setPercentageEnabled(false);
 
 		FeatureReader<RawHapMapFeature> reader = AbstractFeatureReader.getFeatureReader(mainFilePath, new RawHapMapCodec(), false);
 		GenericXmlApplicationContext ctx = null;
@@ -210,7 +209,7 @@ public class HapMapImport {
 				progress.addStep(info);
 				progress.moveToNextStep();
 			}
-			
+
 			if (!project.getVariantTypes().contains(Type.SNP.toString()))
 				project.getVariantTypes().add(Type.SNP.toString());
 
@@ -225,7 +224,7 @@ public class HapMapImport {
 			progress.moveToNextStep();
 			while (it.hasNext())
 			{
-				RawHapMapFeature hmFeature = it.next();               
+				RawHapMapFeature hmFeature = it.next();
 				String variantDescForPos = hmFeature.getChr() + "::" + hmFeature.getStart();
 				try
 				{
@@ -268,7 +267,7 @@ public class HapMapImport {
 						}
 					}
 
-					int ploidy = 2;	// the only one supported by HapMap format 
+					int ploidy = 2;	// the only one supported by HapMap format
 					if (project.getPloidyLevel() < ploidy)
 						project.setPloidyLevel(ploidy);
 
@@ -300,7 +299,7 @@ public class HapMapImport {
 				for (VariantData vd : unsavedVariants)
 					mongoTemplate.save(vd);
 				for (VariantRunData run : unsavedRuns)
-					mongoTemplate.save(run);							
+					mongoTemplate.save(run);
 			}
 
 			// save project data
@@ -353,9 +352,9 @@ public class HapMapImport {
 			variantToFeed.setReferencePosition(new ReferencePosition(hmFeature.getChr(), hmFeature.getStart(), (long) hmFeature.getEnd()));
 
 		VariantRunData run = new VariantRunData(new VariantRunData.VariantRunDataId(project.getId(), runName, variantToFeed.getId()));
-	
+
 		String[] knownAlleles = hmFeature.getAlleles();
-			
+
 		// genotype fields
 		for (int i=0; i<hmFeature.getGenotypes().length; i++)
 		{
@@ -367,23 +366,23 @@ public class HapMapImport {
 			{
 				String allele1 = genotype.substring(0, 1);
 				String allele2 = genotype.substring(1, 2);
-				
+
 				int nRefAlleleCount = 0, altAlleleCount = 0;
-				
+
 				if (knownAlleles[0].equals(allele1))
 					nRefAlleleCount++;
 				else if (knownAlleles[1].equals(allele1))
 					altAlleleCount++;
-							
+
 				if (knownAlleles[0].equals(allele2))
 					nRefAlleleCount++;
 				else if (knownAlleles[1].equals(allele2))
 					altAlleleCount++;
-				
+
 				if (nRefAlleleCount + altAlleleCount == 2)
 					gtCode = nRefAlleleCount == 2 ? "0/0" : (nRefAlleleCount == 1 ? "0/1" : "1/1");
 			}
-			
+
 			if (gtCode.length() == 0 && !"NN".equals(genotype))
 				LOG.warn("Ignoring invalid HapMap genotype \"" + gtCode + "\" for variant " + variantToFeed.getId() + " and individual " + sIndividual);
 
@@ -430,7 +429,7 @@ public class HapMapImport {
 //					LOG.info("Sample created for individual " + sIndividual + " with index " + sampleIndex);
 				}
 				usedSamples.put(sIndividual, new SampleId(project.getId(), sampleIndex));	// add a sample for this individual to the project
-			}			
+			}
 
 			run.getSampleGenotypes().put(usedSamples.get(sIndividual).getSampleIndex(), aGT);
 		}

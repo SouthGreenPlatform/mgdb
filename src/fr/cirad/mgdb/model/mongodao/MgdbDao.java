@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -40,25 +40,24 @@ import fr.cirad.mgdb.model.mongo.subtypes.VariantRunData;
 import fr.cirad.mgdb.model.mongo.subtypes.VariantRunData.VariantRunDataId;
 import fr.cirad.tools.Helper;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class MgdbDao.
  */
 public class MgdbDao extends Helper
 {
-	
+
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(MgdbDao.class);
-	
+
 	/** The Constant COLLECTION_NAME_TAGGED_VARIANT_IDS. */
 	static final public String COLLECTION_NAME_TAGGED_VARIANT_IDS = "taggedVariants";
-	
+
 	/** The Constant COLLECTION_NAME_CACHED_COUNTS. */
 	static final public String COLLECTION_NAME_CACHED_COUNTS = "cachedCounts";
-	
+
 	/** The Constant FIELD_NAME_CACHED_COUNT_VALUE. */
 	static final public String FIELD_NAME_CACHED_COUNT_VALUE = "val";
-	
+
 	/**
 	 * Prepare database for searches.
 	 *
@@ -69,7 +68,7 @@ public class MgdbDao extends Helper
 	{
 		// empty count cache
 		mongoTemplate.dropCollection(COLLECTION_NAME_CACHED_COUNTS);
-		
+
 		DBCollection variantColl = mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantData.class));
 		DBCollection runColl = mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantRunData.class));
 
@@ -82,7 +81,7 @@ public class MgdbDao extends Helper
 		BasicDBObject runCollIndexKeys = new BasicDBObject("_id." + VariantRunDataId.FIELDNAME_VARIANT_ID, 1);
 		runCollIndexKeys.put("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID, 1);
 		runColl.createIndex(runCollIndexKeys);
-		
+
 		// tag variant IDs across database
 		List<Comparable> result = new ArrayList<Comparable>();
 		mongoTemplate.dropCollection(COLLECTION_NAME_TAGGED_VARIANT_IDS);
@@ -92,7 +91,7 @@ public class MgdbDao extends Helper
 		long numberOfTaggedVariants = Math.min(totalVariantCount / 2, maxGenotypeCount > 200000000 ? 300 : (maxGenotypeCount > 100000000 ? 200 : (maxGenotypeCount > 50000000 ? 100 : (maxGenotypeCount > 20000000 ? 50 : (maxGenotypeCount > 5000000 ? 40 : 30)))));
 		int nChunkSize = (int) Math.max(1, (int) totalVariantCount / (numberOfTaggedVariants - 1));
 		LOG.debug("Number of variants between 2 tagged ones: " + nChunkSize);
-		
+
 		DBCollection collection = mongoTemplate.getCollection(MgdbDao.COLLECTION_NAME_TAGGED_VARIANT_IDS);
 		Comparable cursor = null;
 		for (int nChunkNumber=0; nChunkNumber<(float) totalVariantCount / nChunkSize; nChunkNumber++)
@@ -112,7 +111,7 @@ public class MgdbDao extends Helper
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Estimate number of variants to query at once.
 	 *
@@ -125,13 +124,13 @@ public class MgdbDao extends Helper
 	{
 		if (totalNumberOfMarkersToQuery <= 0)
 			throw new Exception("totalNumberOfMarkersToQuery must be >0");
-		
+
 		int nSampleCount = Math.max(1 /*in case someone would pass 0 or less*/, nNumberOfWantedGenotypes);
 		int nResult = Math.max(1, 200000/nSampleCount);
-		
+
 		return Math.min(nResult, totalNumberOfMarkersToQuery);
 	}
-	
+
 	/**
 	 * Gets the sample genotypes.
 	 *
@@ -162,12 +161,12 @@ public class MgdbDao extends Helper
 		variantQuery.fields().include("_id");
 		for (String returnedField : variantFieldsToReturn)
 			variantQuery.fields().include(returnedField);
-		
-		LinkedHashMap<Comparable, VariantData> variantIdToVariantMap = new LinkedHashMap<Comparable, VariantData>();		
+
+		LinkedHashMap<Comparable, VariantData> variantIdToVariantMap = new LinkedHashMap<Comparable, VariantData>();
 		List<VariantData> variants = mongoTemplate.find(variantQuery, VariantData.class);
 		for (VariantData vd : variants)
 			variantIdToVariantMap.put(vd.getId(), vd);
-		
+
 		// next block may be removed at some point (only some consistency checking)
 		if (variantIdListToRestrictTo != null && variantIdListToRestrictTo.size() != variants.size())
 		{
@@ -177,7 +176,7 @@ public class MgdbDao extends Helper
 				{
 					if (!variantIdToVariantMap.containsKey(vd.getId()))
 						variantIdToVariantMap.put(vd.getId(), vd);
-					
+
 					if (vd.getId().equals(vi))
 						continue mainLoop;
 				}
@@ -192,7 +191,7 @@ public class MgdbDao extends Helper
 			if (!variants.get(variants.size() - 1).getId().toString().equals(variantIdListToRestrictTo.get(variants.size() - 1).toString()))
 				throw new Exception("Last returned variant (" + variants.get(variants.size() - 1).getId() + ") differs from last requested variant (" +variantIdListToRestrictTo.get(variants.size() - 1) + ")");
 		}
-			
+
 		LinkedHashMap<VariantData, Collection<VariantRunData>> result = new LinkedHashMap<VariantData, Collection<VariantRunData>>();
 		for (Comparable variantId : variantIdListToRestrictTo)
 			result.put(variantIdToVariantMap.get(ObjectId.isValid(variantId.toString()) ? new ObjectId(variantId.toString()) : variantId), null);
@@ -207,7 +206,7 @@ public class MgdbDao extends Helper
 			runQuery.fields().include("_id");
 			for (String returnedField : projectIdToReturnedRunFieldListMap.get(projectId))
 				runQuery.fields().include(returnedField);
-			
+
 			List<VariantRunData> runs = mongoTemplate.find(runQuery, VariantRunData.class);
 			for (VariantRunData run : runs)
 			{
@@ -222,13 +221,13 @@ public class MgdbDao extends Helper
 				variantRuns.add(run);
 			}
 		}
-	
+
 		if (result.size() != variantIdListToRestrictTo.size())
 			throw new Exception("Bug: we should be returning " + variantIdListToRestrictTo.size() + " results but we only have " + result.size());
 
 		return result;
 	}
-	
+
 	/**
 	 * Gets the sample genotypes.
 	 *
@@ -247,7 +246,7 @@ public class MgdbDao extends Helper
 		variantFieldsToReturn.add(VariantData.FIELDNAME_REFERENCE_POSITION);
 		if (fReturnVariantTypes)
 			variantFieldsToReturn.add(VariantData.FIELDNAME_TYPE);
-		
+
 		HashMap<Integer /*project id*/, ArrayList<String>> projectIdToReturnedRunFieldListMap = new HashMap<Integer, ArrayList<String>>();
 		for (SampleId sampleID : sampleIDs)
 		{
@@ -263,7 +262,7 @@ public class MgdbDao extends Helper
 		}
 
 		LinkedHashMap<VariantData, Collection<VariantRunData>> result = getSampleGenotypes(mongoTemplate, variantFieldsToReturn, projectIdToReturnedRunFieldListMap, variantIdListToRestrictTo, sort);
-		
+
 		return result;
 	}
 }

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -33,12 +33,11 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import fr.cirad.mgdb.model.mongo.maintypes.Sequence;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class SequenceImport.
  */
 public class SequenceImport {
-	
+
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(SequenceImport.class);
 
@@ -52,9 +51,9 @@ public class SequenceImport {
 	{
 		if (args.length < 3)
 			throw new Exception("You must pass 3 parameters as arguments: DATASOURCE name, FASTA reference-file, 3rd parameter only supports values '2' (empty all database's sequence data before importing), and '0' (only overwrite existing sequences)!");
-		
+
 		String sModule = args[0];
-		
+
 		GenericXmlApplicationContext ctx = null;
 		MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
 		if (mongoTemplate == null)
@@ -74,9 +73,9 @@ public class SequenceImport {
 			if (mongoTemplate == null)
 				throw new Exception("DATASOURCE '" + sModule + "' is not supported!");
 		}
-		
+
 		String seqCollName = MongoTemplateManager.getMongoCollectionName(Sequence.class);
-		
+
 		if ("2".equals(args[2]))
 		{	// empty project's sequence data before importing
 			if (mongoTemplate.collectionExists(seqCollName))
@@ -84,7 +83,7 @@ public class SequenceImport {
 				mongoTemplate.dropCollection(seqCollName);
 				LOG.info("Collection " + seqCollName + " dropped.");
 			}
-		}	
+		}
 		else if ("0".equals(args[2]))
 		{
 			// do nothing
@@ -96,8 +95,8 @@ public class SequenceImport {
 				new File(args[1]),
 				new GenericFastaHeaderParser(),
 				new DNASequenceCreator(DNACompoundSet.getDNACompoundSet()));
-		LinkedHashMap<String, DNASequence> sequences = fastaReader.process();		
-		
+		LinkedHashMap<String, DNASequence> sequences = fastaReader.process();
+
 		LOG.info("Importing fasta file");
 		int rowIndex = 0;
 		for (Entry<String, DNASequence> entry : sequences.entrySet())
@@ -108,14 +107,14 @@ public class SequenceImport {
 				LOG.error("Unable to find sequence '" + sequenceId + "' in file ");
 			else
 				mongoTemplate.save(new Sequence(sequenceId, sequence.getSequenceAsString()), seqCollName);
-			
+
 			rowIndex++;
 			if (rowIndex%1000 == 0)
 				System.out.print(rowIndex + " ");
 		}
 		System.out.println();
 		LOG.info(sequences.size() + " records added to collection " + seqCollName);
-		
+
 		ctx.close();
 	}
 

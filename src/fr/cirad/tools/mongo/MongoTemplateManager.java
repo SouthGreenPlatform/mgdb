@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -58,39 +58,38 @@ import com.mongodb.ServerAddress;
 
 import fr.cirad.tools.AppConfig;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class MongoTemplateManager.
  */
 @Component
 public class MongoTemplateManager implements ApplicationContextAware
 {
-	
+
 	/** The Constant LOG. */
 	static private final Logger LOG = Logger.getLogger(MongoTemplateManager.class);
-	
+
 	/** The application context. */
 	static private ApplicationContext applicationContext;
-	
+
 	/** The template map. */
 	static private Map<String, MongoTemplate> templateMap = new TreeMap<String, MongoTemplate>();
-	
+
 	/** The public databases. */
 	static private List<String> publicDatabases = new ArrayList<String>();
-	
+
 	/** The hidden databases. */
 	static private List<String> hiddenDatabases = new ArrayList<String>();
-	
+
 	/** The mongo clients. */
 	static private Map<String, MongoClient> mongoClients = new HashMap<String, MongoClient>();
 
 /** The resource. */
 //	static private Map<String, UserCredentials> mongoCredentials = new HashMap<String, UserCredentials>();
 	static private String resource = "datasources";
-	
+
 	/** The expiry prefix. */
 	static private String EXPIRY_PREFIX = "_ExpiresOn_";
-	
+
 	/** The temp export prefix. */
 	static public String TEMP_EXPORT_PREFIX = "tmpVar_";
 
@@ -99,14 +98,14 @@ public class MongoTemplateManager implements ApplicationContextAware
 
 	/** The app config. */
 	@Autowired private AppConfig appConfig;
-	
+
 	/** The resource control. */
 	private static Control resourceControl = new ResourceBundle.Control() {
 		public boolean needsReload(String baseName, java.util.Locale locale, String format, ClassLoader loader, ResourceBundle bundle, long loadTime)
 		{
 			return true;
 		}
-		
+
 		public long getTimeToLive(String baseName, java.util.Locale locale)
 		{
 			return 0;
@@ -119,10 +118,10 @@ public class MongoTemplateManager implements ApplicationContextAware
 	@Override
 	public void setApplicationContext(ApplicationContext ac) throws BeansException {
 		initialize(ac);
-		
+
 		String serverCleanupCSV = appConfig.dbServerCleanup();
 		List<String> authorizedCleanupServers = serverCleanupCSV == null ? null : Arrays.asList(serverCleanupCSV.split(","));
-		
+
 		// we do this cleanup here because it only happens when the webapp is truly being (re)started (not when the reload button has been clicked)
 		for (String sModule : templateMap.keySet())
 		{
@@ -137,7 +136,7 @@ public class MongoTemplateManager implements ApplicationContextAware
 					}
 		}
 	}
-	
+
 	/**
 	 * Initialize.
 	 *
@@ -148,15 +147,15 @@ public class MongoTemplateManager implements ApplicationContextAware
 		applicationContext = ac;
 		while (applicationContext.getParent() != null)	/* we want the root application-context */
 			applicationContext = applicationContext.getParent();
-		
+
 		loadDataSources();
 	}
-	
+
 	/**
 	 * Load data sources.
 	 */
 	static private void loadDataSources()
-	{		
+	{
 		templateMap.clear();
 		try
 		{
@@ -183,22 +182,22 @@ public class MongoTemplateManager implements ApplicationContextAware
 			{
 				String key = bundleKeys.nextElement();
 				String[] datasourceInfo = bundle.getString(key).split(",");
-	
+
 				if (datasourceInfo.length < 2)
 				{
 					LOG.error("Unable to deal with datasource info for key " + key + ". Datasource definition requires at least 2 comma-separated strings: mongo host bean name (defined in Spring application context) and database name");
 					continue;
 				}
-	
+
 				boolean fHidden = key.endsWith("*"), fPublic = key.startsWith("*");
 				String cleanKey = key.replaceAll("\\*", "");
-				
+
 				if (templateMap.containsKey(cleanKey))
 				{
 					LOG.error("Datasource " + cleanKey + " already exists!");
 					continue;
 				}
-	
+
 				try
 				{
 					templateMap.put(cleanKey, createMongoTemplate(cleanKey, datasourceInfo[0], datasourceInfo[1]));
@@ -207,7 +206,7 @@ public class MongoTemplateManager implements ApplicationContextAware
 					if (fHidden)
 						hiddenDatabases.add(cleanKey);
 					LOG.info("Datasource " + cleanKey + " loaded as " + (fPublic ? "public" : "private") + " and " + (fHidden ? "hidden" : "exposed"));
-					
+
 					if (datasourceInfo[1].contains(EXPIRY_PREFIX))
 					{
 						long expiryDate = Long.valueOf((datasourceInfo[1].substring(datasourceInfo[1].lastIndexOf(EXPIRY_PREFIX) + EXPIRY_PREFIX.length())));
@@ -226,7 +225,7 @@ public class MongoTemplateManager implements ApplicationContextAware
 							LOG.info("Dropped expired temporary database: " + datasourceInfo[1]);
 						}
 					}
-					
+
 				}
 				catch (Exception e)
 				{
@@ -250,11 +249,11 @@ public class MongoTemplateManager implements ApplicationContextAware
 	 * @throws Exception the exception
 	 */
 	static public MongoTemplate createMongoTemplate(String sModule, String sHost, String sDbName) throws Exception
-	{		
+	{
 		MongoClient client = mongoClients.get(sHost);
 		if (client == null)
 			throw new Exception("Unknown host: " + sHost);
-		
+
 //		UserCredentials uc = mongoCredentials.get(sHost);
 //		if (uc != null)
 //			client.getCredentialsList().add(MongoCredential.createCredential(uc.getUsername(), "admin", uc.getPassword().toCharArray()));
@@ -262,10 +261,10 @@ public class MongoTemplateManager implements ApplicationContextAware
 		SimpleMongoDbFactory factory = new SimpleMongoDbFactory(client, sDbName);
 		MongoTemplate mongoTemplate = new MongoTemplate(factory);
 		((MappingMongoConverter) mongoTemplate.getConverter()).setMapKeyDotReplacement(DOT_REPLACEMENT_STRING);
-		
+
 		return mongoTemplate;
 	}
-	
+
 	/**
 	 * Creates the data source.
 	 *
@@ -301,7 +300,7 @@ public class MongoTemplateManager implements ApplicationContextAware
 		}
 		throw new Exception("Unable to create a unique name for datasource " + sModule + " after " + nRetries + " retries");
 	}
-	
+
 	/**
 	 * Removes the data source.
 	 *
@@ -322,10 +321,10 @@ public class MongoTemplateManager implements ApplicationContextAware
 		String key = sModule.replaceAll("\\*", "");
 		if (fAlsoDropDatabase)
 			templateMap.get(key).getDb().dropDatabase();
-		
+
 		templateMap.remove(key);
-	}	
-	
+	}
+
 	/**
 	 * Gets the host names.
 	 *
@@ -335,7 +334,7 @@ public class MongoTemplateManager implements ApplicationContextAware
 	{
 		return mongoClients.keySet();
 	}
-	
+
 	/**
 	 * Gets the.
 	 *
@@ -346,7 +345,7 @@ public class MongoTemplateManager implements ApplicationContextAware
 	{
 		return templateMap.get(module);
 	}
-	
+
 	/**
 	 * Gets the available modules.
 	 *
@@ -355,7 +354,7 @@ public class MongoTemplateManager implements ApplicationContextAware
 	static public Collection<String> getAvailableModules() {
 		return templateMap.keySet();
 	}
-	
+
 	/**
 	 * Checks if is module public.
 	 *
@@ -366,7 +365,7 @@ public class MongoTemplateManager implements ApplicationContextAware
 	{
 		return publicDatabases.contains(sModule);
 	}
-	
+
 	/**
 	 * Checks if is module hidden.
 	 *
@@ -377,7 +376,7 @@ public class MongoTemplateManager implements ApplicationContextAware
 	{
 		return hiddenDatabases.contains(sModule);
 	}
-	
+
 //	public void saveRunsIntoProjectRecords()
 //	{
 //		for (String module : getAvailableModules())
@@ -399,7 +398,7 @@ public class MongoTemplateManager implements ApplicationContextAware
 //				}
 //		}
 //	}
-	
+
 /**
  * Gets the mongo collection name.
  *
@@ -413,7 +412,7 @@ public static String getMongoCollectionName(Class clazz) {
 
 		return clazz.getSimpleName();
 	}
-//	
+//
 //	public static String getFieldKeyName(Class clazz, String sField) {
 //		for (java.lang.reflect.Field f : clazz.getFields())
 //		{
@@ -423,7 +422,7 @@ public static String getMongoCollectionName(Class clazz) {
 //		}
 //		return sField;
 //	}
-	
+
 	/**
  * Close.
  */

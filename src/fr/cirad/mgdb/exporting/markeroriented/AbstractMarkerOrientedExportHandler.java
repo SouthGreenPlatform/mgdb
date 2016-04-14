@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -41,16 +41,15 @@ import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class AbstractMarkerOrientedExportHandler.
  */
 public abstract class AbstractMarkerOrientedExportHandler implements IExportHandler
 {
-	
+
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(AbstractMarkerOrientedExportHandler.class);
-	
+
 	/** The marker oriented export handlers. */
 	static private TreeMap<String, AbstractMarkerOrientedExportHandler> markerOrientedExportHandlers = null;
 
@@ -96,7 +95,7 @@ public abstract class AbstractMarkerOrientedExportHandler implements IExportHand
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Gets the marker oriented export handlers.
 	 *
@@ -149,7 +148,7 @@ public abstract class AbstractMarkerOrientedExportHandler implements IExportHand
 		}
 		return markerOrientedExportHandlers;
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see fr.cirad.mgdb.exporting.IExportHandler#getSupportedVariantTypes()
 	 */

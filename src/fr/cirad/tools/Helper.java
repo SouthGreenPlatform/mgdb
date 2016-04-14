@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -32,19 +32,18 @@ import org.apache.log4j.Logger;
 
 import com.mongodb.DBObject;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class Helper.
  */
-public class Helper 
+public class Helper
 {
-	
+
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(Helper.class);
-	
+
 	/** The md. */
 	static MessageDigest md = null;
-	
+
 	static
 	{
 		try
@@ -56,7 +55,7 @@ public class Helper
 			LOG.error("Unable to find MD5 algorithm", e);
 		}
 	}
-		
+
 	/**
 	 * Convert string array to number array.
 	 *
@@ -67,7 +66,7 @@ public class Helper
 	{
 		if (stringArray == null || stringArray.length == 0)
 			return new Number[0];
-	
+
 		Number[] result = new Number[stringArray.length];
 		for (int i=0; i<stringArray.length; i++)
 			result[i] = Double.parseDouble(stringArray[i]);
@@ -85,13 +84,13 @@ public class Helper
 	{
 		if (array == null)
 			return null;
-		
+
 		StringBuffer result = new StringBuffer("");
 		for (int val : array)
 			result.append((result.length() == 0 ? "" : separator) + val);
 		return result.toString();
 	}
-	
+
 	/**
 	 * Array to csv.
 	 *
@@ -103,13 +102,13 @@ public class Helper
 	{
 		if (array == null)
 			return null;
-		
+
 		StringBuffer result = new StringBuffer("");
 		for (Object val : array)
 			result.append((result.length() == 0 ? "" : separator) + val);
 		return result.toString();
 	}
-	
+
 	/**
 	 * Csv to int array.
 	 *
@@ -120,14 +119,14 @@ public class Helper
 	{
 		if (csvString == null)
 			return new int[0];
-		
+
 		String[] splittedString = csvString.split(",");
 		int[] result = new int[splittedString.length];
 		for (int i=0; i<result.length; i++)
 			result[i] = Integer.parseInt(splittedString[i]);
 		return result;
 	}
-	
+
 	/**
 	 * Split.
 	 *
@@ -149,7 +148,7 @@ public class Helper
 		}
         return splittedString;
 	}
-	
+
 	/**
 	 * Extract columns from csv.
 	 *
@@ -189,7 +188,7 @@ public class Helper
 								result.add(new ArrayList<String>());
 							result.get(j).add(splittedLine.get(returnedColumnIndexes[j]));
 						}
-	
+
 				sLine = br.readLine();
 				if (sLine != null)
 					sLine = sLine.trim();
@@ -204,7 +203,7 @@ public class Helper
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Gets the count for key.
 	 *
@@ -218,7 +217,7 @@ public class Helper
 		if (gtCount == null)
 			gtCount = 0;
 		return gtCount;
-	}	
+	}
 
 	/**
 	 * Convert to m d5.
@@ -239,7 +238,7 @@ public class Helper
         	md5String = "0" + md5String;
         return md5String;
 	}
-	
+
 	/**
 	 * Null to empty string.
 	 *
@@ -250,7 +249,7 @@ public class Helper
 	{
 		return s == null ? "" : s;
 	}
-	
+
 	/**
 	 * Read possibly nested field.
 	 *
@@ -280,11 +279,11 @@ public class Helper
 			result = StringUtils.join(((ArrayList<Object>) result), "; ");
 		}
 		else
-			result = o;						
+			result = o;
 
 		if (result == null)
 			result = "";
-			
+
 		return result;
 	}
 

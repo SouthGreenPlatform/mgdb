@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -21,22 +21,21 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class Sequence.
  */
 @Document(collection = "contigSeqs")
 @TypeAlias("CSQ")
 public class Sequence
-{	
-	
+{
+
 	/** The Constant FIELDNAME_SEQUENCE. */
 	public final static String FIELDNAME_SEQUENCE = "sq";
 
 	/** The id. */
 	@Id
 	private String id;
-	
+
 	/** The sequence. */
 	@Field(FIELDNAME_SEQUENCE)
 	private String sequence;
@@ -61,7 +60,7 @@ public class Sequence
 	public String getId() {
 		return id;
 	}
-	
+
 	/**
 	 * Sets the id.
 	 *
@@ -70,7 +69,7 @@ public class Sequence
 	public void setId(String id) {
 		this.id = id;
 	}
-	
+
 	/**
 	 * Gets the sequence.
 	 *
@@ -87,5 +86,5 @@ public class Sequence
 	 */
 	public void setSequence(String sequence) {
 		this.sequence = sequence;
-	}	
+	}
 }

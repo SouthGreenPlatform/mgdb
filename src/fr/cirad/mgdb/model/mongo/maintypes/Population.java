@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -21,7 +21,6 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class Population.
  */
@@ -29,31 +28,31 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @TypeAlias("P")
 public class Population
 {
-	
+
 	/** The Constant FIELDNAME_NAME. */
 	public final static String FIELDNAME_NAME = "nm";
-	
+
 	/** The Constant FIELDNAME_DESCRIPTION. */
 	public final static String FIELDNAME_DESCRIPTION = "ds";
-	
+
 	/** The Constant FIELDNAME_POPULATION_GROUP. */
 	public final static String FIELDNAME_POPULATION_GROUP = "pg";
-	
+
 	/** The id. */
 	@Id
 	private String id;
 
 	/** The name. */
 	@Field(FIELDNAME_NAME)
-	private String name;	
-	
+	private String name;
+
 	/** The description. */
 	@Field(FIELDNAME_DESCRIPTION)
-	private String description;	
+	private String description;
 
 	/** The pop group. */
 	@Field(FIELDNAME_POPULATION_GROUP)
-	private String popGroup;	
+	private String popGroup;
 
 	/**
 	 * Instantiates a new population.
@@ -72,7 +71,7 @@ public class Population
 	public String getId() {
 		return id;
 	}
-	
+
 //	public void setId(String id) {
 //		this.id = id;
 //	}
@@ -121,7 +120,7 @@ public String getName() {
 	public boolean isOutgroup() {
 		return "OUT".equals(popGroup);
 	}
-	
+
 	/**
 	 * Gets the pop group.
 	 *

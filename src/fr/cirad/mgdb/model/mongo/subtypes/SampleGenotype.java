@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -23,7 +23,6 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-// TODO: Auto-generated Javadoc
 //@Document(collection = "sampleGenotypes")
 /**
  * The Class SampleGenotype.
@@ -31,10 +30,10 @@ import org.springframework.data.mongodb.core.mapping.Field;
 //@TypeAlias("G")
 public class SampleGenotype
 {
-	
+
 	/** The Constant FIELDNAME_GENOTYPECODE. */
 	public final static String FIELDNAME_GENOTYPECODE = "gt";
-	
+
 	/** The Constant SECTION_ADDITIONAL_INFO. */
 	public final static String SECTION_ADDITIONAL_INFO = "ai";
 
@@ -63,10 +62,10 @@ public class SampleGenotype
 //			this.variantId = variantId;
 //			this.sampleIndex = sampleIndex;
 //		}
-//		
+//
 //		public SampleGenotypeId() {
 //		}
-//		
+//
 //		public int getProjectId() {
 //			return projectId;
 //		}
@@ -82,11 +81,11 @@ public class SampleGenotype
 //
 //	@Id
 //	private SampleGenotypeId id;
-	
+
 	/** The code. */
 @Field(FIELDNAME_GENOTYPECODE)
 	private String code;
-	
+
 	/** The additional info. */
 	@Field(SECTION_ADDITIONAL_INFO)
 	private HashMap<String, Comparable> additionalInfo = null;
@@ -104,8 +103,8 @@ public class SampleGenotype
 //	public SampleGenotype(SampleGenotypeId sampleGenotypeId) {
 //		super();
 //		this.id = sampleGenotypeId;
-//	}	
-	
+//	}
+
 	/**
  * Gets the code.
  *
@@ -114,7 +113,7 @@ public class SampleGenotype
 public String getCode() {
 		return code;
 	}
-	
+
 	/**
 	 * Sets the code.
 	 *

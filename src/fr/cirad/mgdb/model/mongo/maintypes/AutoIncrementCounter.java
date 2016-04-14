@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -25,18 +25,17 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class AutoIncrementCounter.
  */
 @Document(collection="counters")
 @TypeAlias("AIC")
 public class AutoIncrementCounter
-{	
-	
+{
+
 	/** The id. */
 	@Id private String id;
-	
+
 	/** The seq. */
 	private int seq;
 
@@ -45,7 +44,7 @@ public class AutoIncrementCounter
 //		this.id = id;
 //		this.seq = seq;
 //	}
-	
+
 	/**
  * Instantiates a new auto increment counter.
  *
@@ -88,7 +87,7 @@ public AutoIncrementCounter(String id, int seq) {
 		AutoIncrementCounter counter = mongo.findAndModify(new Query(Criteria.where("_id").is(collectionName)), new Update().inc("seq", 1), FindAndModifyOptions.options().returnNew(true), AutoIncrementCounter.class);
 		if (counter != null)
 			return counter.getSeq();
-		
+
 		// counters collection contains no data for this type
 		counter = new AutoIncrementCounter(collectionName, 1);
 //		counter.setSeq(1);

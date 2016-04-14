@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -22,7 +22,6 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class MappingStats.
  */
@@ -30,27 +29,27 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @TypeAlias("MS")
 public class MappingStats
 {
-	
+
 	/** The Constant RUNNAME. */
 	public final static String RUNNAME = "rn";
-	
+
 	/** The Constant SAMPLE_INFO. */
 	public final static String SAMPLE_INFO = "sp";
-	
+
 	/** The Constant MAPPING_LENGTH. */
 	public final static String MAPPING_LENGTH = "ml";
-	
+
 	/** The Constant SAMPLE_INFO_FIELDNAME_RPKM. */
 	public final static String SAMPLE_INFO_FIELDNAME_RPKM = "rp";
-	
+
 	/** The run name. */
 	@Field(RUNNAME)
 	private String runName;
-	
+
 	/** The mapping length. */
 	@Field(MAPPING_LENGTH)
 	private Long mappingLength;
-	
+
 	/** The sample info. */
 	@Field(SAMPLE_INFO)
 	private HashMap<String/*sample*/, HashMap<String/*field*/, Comparable/*value*/>> sampleInfo = new HashMap<String, HashMap<String, Comparable>>();

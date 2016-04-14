@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -18,23 +18,22 @@ package fr.cirad.mgdb.model.mongo.subtypes;
 
 import org.springframework.data.mongodb.core.mapping.Field;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class GenotypingSample.
  */
 public class GenotypingSample
 {
-	
+
 	/** The Constant FIELDNAME_INDIVIDUAL. */
 	public final static String FIELDNAME_INDIVIDUAL = "in";
-	
+
 	/** The Constant FIELDNAME_PROBLEM. */
 	public final static String FIELDNAME_PROBLEM = "pb";
-	
+
 	/** The individual. */
 	@Field(FIELDNAME_INDIVIDUAL)
 	private String individual;
-	
+
 	/** The problem. */
 	@Field(FIELDNAME_PROBLEM)
 	private String problem;
@@ -48,7 +47,7 @@ public class GenotypingSample
 		super();
 		this.individual = individual.intern();
 	}
-	
+
 	/**
 	 * Gets the individual.
 	 *
@@ -57,7 +56,7 @@ public class GenotypingSample
 	public String getIndividual() {
 		return individual;
 	}
-	
+
 	/**
 	 * Sets the individual.
 	 *
@@ -66,7 +65,7 @@ public class GenotypingSample
 	public void setIndividual(String individual) {
 		this.individual = individual.intern();
 	}
-	
+
 	/**
 	 * Gets the problem.
 	 *
@@ -75,7 +74,7 @@ public class GenotypingSample
 	public String getProblem() {
 		return problem;
 	}
-	
+
 	/**
 	 * Checks if is problematic.
 	 *

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -53,19 +53,18 @@ import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class AbstractIndividualOrientedExportHandler.
  */
 public abstract class AbstractIndividualOrientedExportHandler implements IExportHandler
 {
-	
+
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(AbstractIndividualOrientedExportHandler.class);
-	
+
 	/** The individual oriented export handlers. */
 	static private TreeMap<String, AbstractIndividualOrientedExportHandler> individualOrientedExportHandlers = null;
-	
+
 	/**
 	 * Export data.
 	 *
@@ -127,7 +126,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 
 		List<Individual> individuals = getIndividualsFromSamples(sModule, sampleIDs);
 		ArrayList<String> individualList = new ArrayList<String>();
-		
+
 		HashMap<Object, Integer> individualOutputGenotypeCounts = new HashMap<Object, Integer>();	// will help us to keep track of missing genotypes
 		LinkedHashMap<String, File> files = new LinkedHashMap<String, File>();
 		int i = 0;
@@ -145,13 +144,13 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 				individualList.add(individual.getId());
 				i++;
 			}
-		
+
 		final MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
 		int markerCount = markerCursor.count();
-		
+
 		short nProgress = 0, nPreviousProgress = 0;
 		int avgObjSize = (Integer) mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantRunData.class)).getStats().get("avgObjSize");
-		int nChunkSize = nMaxChunkSizeInMb*1024*1024 / avgObjSize;		
+		int nChunkSize = nMaxChunkSizeInMb*1024*1024 / avgObjSize;
 		long nLoadedMarkerCount = 0;
 		markerCursor.batchSize(nChunkSize);
 		while (markerCursor.hasNext())
@@ -175,7 +174,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 			for (i=0; i<variantsAndRuns.size(); i++)	// read data and write results into temporary files (one per sample)
 			{
 				HashMap<String, List<String>> individualGenotypes = new HashMap<String, List<String>>();
-				
+
 				long markerIndex = nLoadedMarkerCount + currentMarkers.indexOf(variants[i].getId());
 				Collection<VariantRunData> runs = variantsAndRuns.get(variants[i]);
 				if (runs != null)
@@ -185,7 +184,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 							SampleGenotype sampleGenotype = run.getSampleGenotypes().get(sampleIndex);
 							List<String> alleles = variants[i].getAllelesFromGenotypeCode(sampleGenotype.getCode());
 							String individualId = individuals.get(sampleIDs.indexOf(new SampleId(run.getId().getProjectId(), sampleIndex))).getId();
-							
+
 							Integer gq = null;
 							try
 							{
@@ -195,7 +194,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 							{}
 							if (gq != null && gq < genotypeQualityThreshold)
 								continue;
-							
+
 							Integer dp = null;
 							try
 							{
@@ -205,14 +204,14 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 							{}
 							if (dp != null && dp < readDepthThreshold)
 								continue;
-							
+
 							List<String> storedIndividualGenotypes = individualGenotypes.get(individualId);
 							if (storedIndividualGenotypes == null)
 							{
 								storedIndividualGenotypes = new ArrayList<String>();
 								individualGenotypes.put(individualId, storedIndividualGenotypes);
 							}
-	
+
 							String sAlleles = StringUtils.join(alleles, ' ');
 							storedIndividualGenotypes.add(sAlleles);
 						}
@@ -222,7 +221,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 					StringBuffer genotypeBuffer = individualGenotypeBuffers.get(individual);
 					if (genotypeBuffer == null)
 					{
-						genotypeBuffer = new StringBuffer(); 
+						genotypeBuffer = new StringBuffer();
 						individualGenotypeBuffers.put(individual, genotypeBuffer); // we are about to write individual's first genotype for this chunk
 					}
 					Integer gtCount = MgdbDao.getCountForKey(individualOutputGenotypeCounts, individual);
@@ -240,7 +239,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 					individualOutputGenotypeCounts.put(individual, gtCount + 1);
 				}
 			}
-			
+
 			// write genotypes collected in this chunk to each individual's file
 			for (String individual : individualList)
 			{
@@ -248,7 +247,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 				StringBuffer chunkStringBuffer = individualGenotypeBuffers.get(individual);
 				if (chunkStringBuffer != null)
 					os.write(chunkStringBuffer.toString().getBytes());
-				
+
 				// deal with trailing missing genotypes
 				Integer gtCount = MgdbDao.getCountForKey(individualOutputGenotypeCounts, individual);
 				while (gtCount < nLoadedMarkerCount + currentMarkers.size())
@@ -258,11 +257,11 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 				}
 				os.close();
 			}
-			
+
 			if (progress.hasAborted())
 				break;
 
-			nLoadedMarkerCount += nLoadedMarkerCountInLoop;			
+			nLoadedMarkerCount += nLoadedMarkerCountInLoop;
 			nProgress = (short) (nLoadedMarkerCount * 100 / markerCount);
 			if (nProgress > nPreviousProgress)
 			{
@@ -276,10 +275,10 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 
 	 	if (!progress.hasAborted())
 	 		LOG.info("createExportFiles took " + (System.currentTimeMillis() - before)/1000d + "s to process " + markerCount + " variants and " + files.size() + " individuals");
-		
+
 		return files;
 	}
-	
+
 	/**
 	 * Gets the individual oriented export handlers.
 	 *

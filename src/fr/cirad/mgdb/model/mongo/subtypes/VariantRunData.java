@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -27,7 +27,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class VariantRunData.
  */
@@ -38,16 +37,16 @@ import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 })
 public class VariantRunData
 {
-	
+
 	/** The Constant FIELDNAME_SAMPLEGENOTYPES. */
 	public final static String FIELDNAME_SAMPLEGENOTYPES = "sp";
-	
+
 	/** The Constant SECTION_ADDITIONAL_INFO. */
 	public final static String SECTION_ADDITIONAL_INFO = "ai";
-	
+
 	/** The Constant FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME. */
 	public final static String FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME = "EFF_nm";
-	
+
 	/** The Constant FIELDNAME_ADDITIONAL_INFO_EFFECT_GENE. */
 	public final static String FIELDNAME_ADDITIONAL_INFO_EFFECT_GENE = "EFF_ge";
 
@@ -56,13 +55,13 @@ public class VariantRunData
 	 */
 	static public class VariantRunDataId
 	{
-		
+
 		/** The Constant FIELDNAME_PROJECT_ID. */
 		public final static String FIELDNAME_PROJECT_ID = "pi";
-		
+
 		/** The Constant FIELDNAME_RUNNAME. */
 		public final static String FIELDNAME_RUNNAME = "rn";
-		
+
 		/** The Constant FIELDNAME_VARIANT_ID. */
 		public final static String FIELDNAME_VARIANT_ID = "vi";
 
@@ -217,7 +216,7 @@ public HashMap<Integer, SampleGenotype> getSampleGenotypes() {
 	public void setAdditionalInfo(HashMap<String, Object> additionalInfo) {
 		this.additionalInfo = additionalInfo;
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
@@ -225,10 +224,10 @@ public HashMap<Integer, SampleGenotype> getSampleGenotypes() {
 	{
 		if (this == o)
 			return true;
-		
+
 		if (o == null || !(o instanceof Individual))
 			return false;
-		
+
 		return getId().getProjectId() == ((VariantRunData)o).getId().getProjectId() && getId().getRunName().equals(((VariantRunData)o).getId().getRunName()) && getId().getVariantId() == ((VariantRunData)o).getId().getVariantId();
 	}
 }

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -16,7 +16,6 @@
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongo.subtypes;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class SampleId.
  */
@@ -24,7 +23,7 @@ public class SampleId /*implements java.io.Serializable, IGenotypingSampleIndex*
 
 	/** The project. */
 	private Integer project;
-	
+
 	/** The sample index. */
 	private Integer sampleIndex;
 
@@ -88,7 +87,7 @@ public class SampleId /*implements java.io.Serializable, IGenotypingSampleIndex*
     public int hashCode() {
         return toString().hashCode();
     }
-	
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
@@ -97,15 +96,15 @@ public class SampleId /*implements java.io.Serializable, IGenotypingSampleIndex*
 	{
 		if (this == o)
 			return true;
-		
+
 		if (o == null || !(o instanceof SampleId))
 			return false;
-		
+
 		boolean f1 = ((SampleId)o).getSampleIndex() == getSampleIndex() || (getSampleIndex() != null && getSampleIndex().equals(((SampleId)o).getSampleIndex()));
 		boolean f2 = ((SampleId)o).getProject() == getProject() || (getProject() != null && getProject().equals(((SampleId)o).getProject()));
 		return f2 && f1;
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#toString()
 	 */

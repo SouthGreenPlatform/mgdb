@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -26,7 +26,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import fr.cirad.mgdb.model.mongo.subtypes.MappingStats;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class SequenceStats.
  */
@@ -34,52 +33,52 @@ import fr.cirad.mgdb.model.mongo.subtypes.MappingStats;
 @TypeAlias("CS")
 public class SequenceStats
 {
-	
+
 	/** The Constant FIELDNAME_SEQUENCE_LENGTH. */
 	public final static String FIELDNAME_SEQUENCE_LENGTH = "cl";
-	
+
 	/** The Constant FIELDNAME_P4E_METHOD. */
 	public final static String FIELDNAME_P4E_METHOD = "pm";
-	
+
 	/** The Constant FIELDNAME_CDS_START. */
 	public final static String FIELDNAME_CDS_START = "cs";
-	
+
 	/** The Constant FIELDNAME_CDS_END. */
 	public final static String FIELDNAME_CDS_END = "ce";
-	
+
 	/** The Constant FIELDNAME_FRAME. */
 	public final static String FIELDNAME_FRAME = "fr";
-	
+
 	/** The Constant FIELDNAME_AVERAGE_RPKM. */
 	public final static String FIELDNAME_AVERAGE_RPKM = "ar";
-	
+
 	/** The Constant FIELDNAME_PROJECT. */
 	public final static String FIELDNAME_PROJECT = "pj";
-	
+
 	/** The id. */
 	@Id
 	private String id;
-	
+
 	/** The sequence length. */
 	@Field(FIELDNAME_SEQUENCE_LENGTH)
 	private long sequenceLength;
-	
+
 	/** The p4e method. */
 	@Field(FIELDNAME_P4E_METHOD)
 	private String p4eMethod;
-	
+
 	/** The cds start. */
 	@Field(FIELDNAME_CDS_START)
 	private Long cdsStart;
-	
+
 	/** The cds end. */
 	@Field(FIELDNAME_CDS_END)
 	private Long cdsEnd;
-	
+
 	/** The frame. */
 	@Field(FIELDNAME_FRAME)
 	private Byte frame;
-	
+
 	/** The average rpkm. */
 	@Field(FIELDNAME_AVERAGE_RPKM)
 	private Float averageRpkm;
@@ -108,7 +107,7 @@ public class SequenceStats
 	public String getId() {
 		return id;
 	}
-	
+
 	/**
 	 * Sets the id.
 	 *
@@ -117,7 +116,7 @@ public class SequenceStats
 	public void setId(String id) {
 		this.id = id;
 	}
-	
+
 	/**
 	 * Gets the sequence length.
 	 *
@@ -242,8 +241,8 @@ public class SequenceStats
 	 */
 	public void setProjectData(HashMap<String, List<MappingStats>> projectData) {
 		this.projectData = projectData;
-	}	
-	
+	}
+
 	/**
 	 * Calculate average rpkm.
 	 *

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <South Green>
- *     
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 3 as
  * published by the Free Software Foundation.
@@ -21,7 +21,6 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class PopulationGroup.
  */
@@ -29,7 +28,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @TypeAlias("PG")
 public class PopulationGroup
 {
-	
+
 	/** The Constant FIELDNAME_NAME. */
 	public final static String FIELDNAME_NAME = "nm";
 
@@ -39,7 +38,7 @@ public class PopulationGroup
 
 	/** The name. */
 	@Field(FIELDNAME_NAME)
-	private String name;	
+	private String name;
 
 	/**
 	 * Instantiates a new population group.
@@ -58,7 +57,7 @@ public class PopulationGroup
 	public String getId() {
 		return id;
 	}
-	
+
 //	public void setId(String id) {
 //		this.id = id;
 //	}
