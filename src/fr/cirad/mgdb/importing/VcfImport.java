@@ -133,8 +133,10 @@ public class VcfImport {
 		long before = System.currentTimeMillis();
 		ProgressIndicator progress = ProgressIndicator.get(m_processID);
 		if (progress == null)
+		{
 			progress = new ProgressIndicator(m_processID, new String[] {"Initializing import"});	// better to add it straight-away so the JSP doesn't get null in return when it checks for it (otherwise it will assume the process has ended)
-
+			ProgressIndicator.registerProgressIndicator(progress);
+		}		
 		progress.setPercentageEnabled(false);
 
 		FeatureReader<VariantContext> reader = AbstractFeatureReader.getFeatureReader(mainFilePath, fIsBCF ? new BCF2Codec() : new VCFCodec(), false);

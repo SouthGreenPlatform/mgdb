@@ -122,8 +122,13 @@ public class HapMapImport {
 	public void importToMongo(String sModule, String sProject, String sRun, String sTechnology, String mainFilePath, int importMode) throws Exception
 	{
 		long before = System.currentTimeMillis();
-		ProgressIndicator progress = new ProgressIndicator(m_processID, new String[] {"Initializing import"});	// better to add it straight-away so the JSP doesn't get null in return when it checks for it (otherwise it will assume the process has ended)
-		ProgressIndicator.registerProgressIndicator(progress);
+
+		ProgressIndicator progress = ProgressIndicator.get(m_processID);
+		if (progress == null)
+		{
+			progress = new ProgressIndicator(m_processID, new String[] {"Initializing import"});	// better to add it straight-away so the JSP doesn't get null in return when it checks for it (otherwise it will assume the process has ended)
+			ProgressIndicator.registerProgressIndicator(progress);
+		}		
 		progress.setPercentageEnabled(false);
 
 		FeatureReader<RawHapMapFeature> reader = AbstractFeatureReader.getFeatureReader(mainFilePath, new RawHapMapCodec(), false);
@@ -371,12 +376,12 @@ public class HapMapImport {
 
 				if (knownAlleles[0].equals(allele1))
 					nRefAlleleCount++;
-				else if (knownAlleles[1].equals(allele1))
+				else if (knownAlleles.length > 1 && knownAlleles[1].equals(allele1))
 					altAlleleCount++;
 
 				if (knownAlleles[0].equals(allele2))
 					nRefAlleleCount++;
-				else if (knownAlleles[1].equals(allele2))
+				else if (knownAlleles.length > 1 && knownAlleles[1].equals(allele2))
 					altAlleleCount++;
 
 				if (nRefAlleleCount + altAlleleCount == 2)
