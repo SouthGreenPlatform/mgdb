@@ -46,7 +46,7 @@ public class Sequence
 	 * @param id the id
 	 * @param sequence the sequence
 	 */
-	public Sequence(String id, /*String reference,*/ String sequence) {
+	public Sequence(String id, String sequence) {
 		super();
 		this.id = id;
 		this.sequence = sequence;
