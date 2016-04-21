@@ -41,6 +41,8 @@ import org.springframework.data.mongodb.core.query.Query;
 import com.mongodb.WriteResult;
 
 import fr.cirad.mgdb.model.mongo.maintypes.AutoIncrementCounter;
+import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader;
+import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader.VcfHeaderId;
 import fr.cirad.mgdb.model.mongo.maintypes.GenotypingProject;
 import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
@@ -165,21 +167,24 @@ public class HapMapImport {
 			{
 				if (importMode == 1) // empty project data before importing
 				{
-					WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId())), VariantRunData.class);
-					String info = wr.getN() + " variantRunData records removed";
-					LOG.info(info);
-					mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
+					WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId())), DBVCFHeader.class);
+					LOG.info(wr.getN() + " records removed from vcf_header");
+					wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId())), VariantRunData.class);
+					LOG.info(wr.getN() + " records removed from variantRunData");
+					wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
+					project.getRuns().clear();
 				}
 				else // empty run data before importing
 				{
+					WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId()).and("_id." + VcfHeaderId.FIELDNAME_RUN).is(sRun)), DBVCFHeader.class);
+					LOG.info(wr.getN() + " records removed from vcf_header");
 					List<Criteria> crits = new ArrayList<Criteria>();
 					crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId()));
 					crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_RUNNAME).is(sRun));
 					crits.add(Criteria.where(VariantRunData.FIELDNAME_SAMPLEGENOTYPES).exists(true));
-					WriteResult wr = mongoTemplate.remove(new Query(new Criteria().andOperator(crits.toArray(new Criteria[crits.size()]))), VariantRunData.class);
-					String info = wr.getN() + " variantRunData records removed";
-					LOG.info(info);
-					mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
+					wr = mongoTemplate.remove(new Query(new Criteria().andOperator(crits.toArray(new Criteria[crits.size()]))), VariantRunData.class);
+					LOG.info(wr.getN() + " records removed from variantRunData");
+					wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);	// we are going to re-write it
 				}
 				if (mongoTemplate.count(null, VariantRunData.class) == 0)
 					mongoTemplate.getDb().dropDatabase(); // if there is no genotyping data then any other data is irrelevant
