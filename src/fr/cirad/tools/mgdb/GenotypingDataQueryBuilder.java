@@ -296,7 +296,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 		pipeline.add(new BasicDBObject("$match", new BasicDBObject("$and", initialMatchList)));
 
         boolean fMultiRunProject = genotypingProject.getRuns().size() > 1;
-        boolean fNeedProjectStage = fMultiRunProject || fieldsToReturn.size() > 0 || (genotypeQualityThreshold != null && genotypeQualityThreshold > 1) || (readDepthThreshold != null && readDepthThreshold > 1) || (cleanOperator != null && !fZygosityRegex);
+        boolean fNeedProjectStage = (cleanOperator != null && (fMultiRunProject|| !fZygosityRegex)) || fieldsToReturn.size() > 0 || (genotypeQualityThreshold != null && genotypeQualityThreshold > 1) || (readDepthThreshold != null && readDepthThreshold > 1);
 
         DBObject project = new BasicDBObject();
         for (int k = 0; k < selectedIndividuals.size(); k++)
@@ -341,28 +341,30 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 
     	// Group records by variant id
 		DBObject groupFields = new BasicDBObject("_id", "$_id." + VariantRunDataId.FIELDNAME_VARIANT_ID);
-    	BasicDBList uniformityList = new BasicDBList();
+    	BasicDBList inconsistencyList = new BasicDBList();
 		for (int j=0; j<selectedIndividuals.size(); j++)
 		{
 			Integer firstSample = null;
 			for (Integer individualSample : individualIndexToSampleListMap.get(j))
 	    	{
 				String pathToGT = VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + individualSample + "." + SampleGenotype.FIELDNAME_GENOTYPECODE;
-				groupFields.put(pathToGT.replaceAll("\\.", "¤"), new BasicDBObject("$addToSet", "$" + pathToGT));
+				String pathToGTReplaced = pathToGT.replaceAll("\\.", "¤");
+				groupFields.put(pathToGTReplaced, new BasicDBObject("$addToSet", "$" + pathToGT));
 
     			// Check uniformity between genotypes related to a same individual
 				if (firstSample == null)
 					firstSample = individualSample;
 				else
 				{
-					DBObject comparisonDBObject = new BasicDBObject();
-					comparisonDBObject.put("$eq", new String[] {"$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + separator + firstSample + separator + SampleGenotype.FIELDNAME_GENOTYPECODE, "$" + pathToGT.replaceAll("\\.", "¤")});
-					uniformityList.add(comparisonDBObject);
+					BasicDBObject firstSamplePath = new BasicDBObject("$arrayElemAt", new Object[] {"$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + separator + firstSample + separator + SampleGenotype.FIELDNAME_GENOTYPECODE, 0});
+					BasicDBObject thisSamplePath = new BasicDBObject("$arrayElemAt", new Object[] {"$" + pathToGTReplaced, 0});
+					DBObject comparisonDBObject = new BasicDBObject("$abs", new BasicDBObject("$cmp", new Object[] {new BasicDBObject("$ifNull", new Object[] {firstSamplePath, thisSamplePath}), thisSamplePath}));
+					inconsistencyList.add(comparisonDBObject);
 				}
 	    	}
 		}
-		if (uniformityList.size() > 0)
-			project.put("u", new BasicDBObject("$and", uniformityList));
+		if (inconsistencyList.size() > 0)
+			project.put("u", new BasicDBObject("$add", inconsistencyList));
 
 		if (fMultiRunProject)
 			pipeline.add(new BasicDBObject("$group", groupFields));
@@ -374,8 +376,8 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
             if (selectedIndividuals.size() >= 1)
             {
           		BasicDBList genotypeMatchList = new BasicDBList();
-    			if (uniformityList.size() > 0)
-    				genotypeMatchList.add(new BasicDBObject("u", true));
+    			if (inconsistencyList.size() > 0)	// in case of multi-run projects, we only keep variants without any inconsistent genotypes
+    				genotypeMatchList.add(new BasicDBObject("u", 0)); 
 
  				// Query to match specific genotype code with zygosity regex (homozygous var, homozygous ref, heterozygous)
 				if (fZygosityRegex)
@@ -518,7 +520,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
                 	nTotalSampleCount++;
                 	String pathToGT = VariantRunData.FIELDNAME_SAMPLEGENOTYPES + separator + individualSample + separator + SampleGenotype.FIELDNAME_GENOTYPECODE;
 
-                    calledGenotypeTotalCountList.add(new BasicDBObject("$cmp", new Object[] {"$" + pathToGT, fMultiRunProject ? new Object[] {""} : ""}));
+                    calledGenotypeTotalCountList.add(new BasicDBObject("$abs", new BasicDBObject("$cmp", new Object[] {"$" + pathToGT, fMultiRunProject ? new Object[] {""} : ""})));
                     if (fMafRequested)
                     {
                         BasicDBList macConditionList = new BasicDBList();
