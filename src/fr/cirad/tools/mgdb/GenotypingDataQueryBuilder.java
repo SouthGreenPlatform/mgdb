@@ -43,6 +43,8 @@ import fr.cirad.tools.mongo.MongoTemplateManager;
 
 /**
  * The Class GenotypingDataQueryBuilder.
+ * 
+ * @author Guilhem SEMPERE, Florian PHILIPPE
  */
 public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 {
