@@ -11,13 +11,14 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.tools;
 
 import java.util.Comparator;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class AlphaNumericStringComparator.
  */

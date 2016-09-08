@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.tools;
@@ -37,14 +37,15 @@ import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class ExternalSort.
  */
 public class ExternalSort {
-
+	
 	/** The defaultmaxtempfiles. */
 	static public int DEFAULTMAXTEMPFILES = 1024;
-
+	
     /**
      * This will simply load the file by blocks of lines, then sort them
      * in-memory, and write the result to temporary files that have to be
@@ -113,7 +114,7 @@ public class ExternalSort {
                                             if (progress != null)
                                             	progress.setCurrentStepProgress((short) (totalWrittenByteCount*100/inputLength));
                                     }
-                                    files.add(sortAndSave(tmplist, cmp, cs, tmpdirectory, distinct, usegzip));
+                                    files.add(sortAndSave(tmplist, cmp, cs, tmpdirectory, distinct, usegzip));                                   
                                     tmplist.clear();
                             }
                     } catch (EOFException oef) {
@@ -133,7 +134,7 @@ public class ExternalSort {
             }
             return files;
     }
-
+    
     /**
      * Sort a list and save it to a temporary file.
      *
@@ -203,7 +204,7 @@ public class ExternalSort {
 	        // files, better run out of memory first.
 	        long blocksize = sizeoffile / maxtmpfiles
 	                + (sizeoffile % maxtmpfiles == 0 ? 0 : 1);
-
+	
 	        // on the other hand, we don't want to create many temporary files
 	        // for naught. If blocksize is smaller than half the free memory, grow it.
 	        long freemem = Runtime.getRuntime().freeMemory();
@@ -211,7 +212,7 @@ public class ExternalSort {
 	                blocksize = freemem / 2;
 	        }
 	        return blocksize;
-	}
+	}    
 
     /**
      * This merges a bunch of temporary flat files.
@@ -267,7 +268,7 @@ public class ExternalSort {
             for (File f : files) f.delete();
             return rowcounter;
     }
-
+    
     /**
      * This merges several BinaryFileBuffer to an output writer.
      *
@@ -280,7 +281,7 @@ public class ExternalSort {
      * @param totalDataSize 				  optional parameter for use with the progress indicator
      * @return The number of lines sorted. (P. Beaudoin)
      * @throws IOException Signals that an I/O exception has occurred.
-     */
+     */        
     public static int merge(BufferedWriter fbw, final Comparator<String> cmp, boolean distinct, List<BinaryFileBuffer> buffers, ProgressIndicator progress, long totalDataSize) throws IOException {
             PriorityQueue<BinaryFileBuffer> pq = new PriorityQueue<BinaryFileBuffer>(
                     11, new Comparator<BinaryFileBuffer>() {
@@ -373,7 +374,7 @@ class BinaryFileBuffer {
 
 /**
  * @author Eleftherios Chetzakis
- *
+ * 
  */
 class StringSizeEstimator {
 
@@ -410,7 +411,7 @@ class StringSizeEstimator {
 				IS_64_BIT_JVM = false;
 			}
 		}
-		// The sizes below are a bit rough as we don't take into account
+		// The sizes below are a bit rough as we don't take into account 
 		// advanced JVM options such as compressed oops
 		// however if our calculation is not accurate it'll be a bit over
 		// so there is no danger of an out of memory error because of this.
@@ -423,7 +424,7 @@ class StringSizeEstimator {
 
 	/**
 	 * Estimates the size of a {@link String} object in bytes.
-	 *
+	 * 
 	 * @param s The string to estimate memory footprint.
 	 * @return The <strong>estimated</strong> size in bytes.
 	 */

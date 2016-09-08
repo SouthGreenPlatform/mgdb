@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongo.maintypes;
@@ -24,17 +24,18 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class Individual.
  */
 @Document(collection = "individuals")
 @TypeAlias("I")
 public class Individual
-{
-
+{	
+	
 	/** The Constant FIELDNAME_POPULATION. */
 	public final static String FIELDNAME_POPULATION = "po";
-
+	
 	/** The Constant FIELDNAME_PROBLEM. */
 	public final static String FIELDNAME_PROBLEM = "pb";
 
@@ -49,7 +50,7 @@ public class Individual
 	/** The problems. */
 	@Field(FIELDNAME_PROBLEM)
 	private LinkedHashMap<Integer /*project id*/, String /*problem description*/> problems;
-
+	
 	/**
 	 * Instantiates a new individual.
 	 *
@@ -67,7 +68,7 @@ public class Individual
 	public String getId() {
 		return id;
 	}
-
+	
 	/**
 	 * Sets the id.
 	 *
@@ -94,7 +95,7 @@ public class Individual
 	public void setPopulation(String population) {
 		this.population = population;
 	}
-
+	
 	/**
 	 * Gets the problems.
 	 *
@@ -115,7 +116,7 @@ public class Individual
 	public Set<Integer> getProblematicProjects() {
 		return getProblems().keySet();
 	}
-
+	
 	/**
 	 * Checks if is problematic.
 	 *
@@ -124,7 +125,7 @@ public class Individual
 	public boolean isProblematic() {
 		return getProblems().keySet().size() > 0;
 	}
-
+	
 	/**
 	 * Checks if is problematic in project.
 	 *
@@ -147,7 +148,7 @@ public class Individual
 		else
 			getProblems().put(projId, problem);
 	}
-
+	
 	/**
 	 * Gets the problem.
 	 *
@@ -157,7 +158,7 @@ public class Individual
 	public String getProblem(int projId) {
 		return getProblems().get(projId);
 	}
-
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
@@ -165,10 +166,10 @@ public class Individual
 	{
 		if (this == o)
 			return true;
-
+		
 		if (o == null || !(o instanceof Individual))
 			return false;
-
+		
 		return getId().equals(((Individual)o).getId());
 	}
 }

@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.exporting.markeroriented;
@@ -41,15 +41,16 @@ import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class AbstractMarkerOrientedExportHandler.
  */
 public abstract class AbstractMarkerOrientedExportHandler implements IExportHandler
 {
-
+	
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(AbstractMarkerOrientedExportHandler.class);
-
+	
 	/** The marker oriented export handlers. */
 	static private TreeMap<String, AbstractMarkerOrientedExportHandler> markerOrientedExportHandlers = null;
 
@@ -95,7 +96,7 @@ public abstract class AbstractMarkerOrientedExportHandler implements IExportHand
 		}
 		return result;
 	}
-
+	
 	/**
 	 * Gets the marker oriented export handlers.
 	 *
@@ -148,7 +149,7 @@ public abstract class AbstractMarkerOrientedExportHandler implements IExportHand
 		}
 		return markerOrientedExportHandlers;
 	}
-
+	
 	/* (non-Javadoc)
 	 * @see fr.cirad.mgdb.exporting.IExportHandler#getSupportedVariantTypes()
 	 */

@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.importing;
@@ -37,14 +37,15 @@ import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class ReferencePositionImport.
  */
 public class ReferencePositionImport {
-
+	
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(ReferencePositionImport.class);
-
+	
 	/** The Constant twoDecimalNF. */
 	static private final NumberFormat twoDecimalNF = NumberFormat.getInstance();
 
@@ -82,7 +83,7 @@ public class ReferencePositionImport {
 		File[] chipInfoFiles = chipInfoFolder.listFiles();
 		if (chipInfoFiles.length == 0)
 			throw new Exception("No chip info files found in folder: " + chipInfoFolder.getAbsolutePath());
-
+		
 		int nMarkerNameColNum, nMarkerChrColNum, nMarkerPosColNum;
 		try
 		{
@@ -115,8 +116,8 @@ public class ReferencePositionImport {
 			MongoTemplate mongoTemplate = MongoTemplateManager.get(args[0]);
 			if (mongoTemplate == null)
 			{	// we are probably being invoked offline
-				ctx = new GenericXmlApplicationContext("applicationContext.xml");
-
+				ctx = new GenericXmlApplicationContext("applicationContext-data.xml");
+	
 				MongoTemplateManager.initialize(ctx);
 				mongoTemplate = MongoTemplateManager.get(args[0]);
 				if (mongoTemplate == null)
@@ -128,7 +129,7 @@ public class ReferencePositionImport {
 				int nVariantIndex = 0;
 				if (chipInfoFiles[i].isDirectory())
 					continue;
-
+				
 				BufferedReader in = new BufferedReader(new FileReader(chipInfoFiles[i]));
 				try
 				{
@@ -142,7 +143,7 @@ public class ReferencePositionImport {
 						{
 							nVariantIndex++;
 							List<String> cells = splitByComaSpaceOrTab(sLine);
-
+		
 							Boolean fSaved = null;
 							for (int j=0; j<10; j++)
 							{
@@ -180,7 +181,7 @@ public class ReferencePositionImport {
 									}
 									catch (OptimisticLockingFailureException olfe)
 									{
-										System.out.println("failed: " + cells.get(nMarkerNameColNum));
+										LOG.error("failed: " + cells.get(nMarkerNameColNum));
 									}
 								}
 							}
@@ -191,11 +192,11 @@ public class ReferencePositionImport {
 						if (sLine != null)
 							sLine = sLine.trim();
 					}
-					while (sLine != null);
+					while (sLine != null);		
 				}
 				finally
 				{
-					in.close();
+					in.close();			
 				}
 			}
 		}

@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.importing;
@@ -37,47 +37,48 @@ import fr.cirad.mgdb.model.mongo.maintypes.SequenceStats;
 import fr.cirad.mgdb.model.mongo.subtypes.MappingStats;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class SequenceStatImport.
  */
 public class SequenceStatImport {
-
+	
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(SequenceStatImport.class);
-
+	
 	/** The Constant SEQUENCE_FIELD_NAME. */
 	private static final String SEQUENCE_FIELD_NAME = "Contig";
-
+	
 	/** The Constant SEQUENCE_FIELD_SEQLENGTH. */
 	private static final String SEQUENCE_FIELD_SEQLENGTH = "length";
-
+	
 	/** The Constant SEQUENCE_FIELD_MAPPINGLENGTH. */
 	private static final String SEQUENCE_FIELD_MAPPINGLENGTH = "mapping length";
-
+	
 	/** The Constant SEQUENCE_FIELD_P4EMETHOD. */
 	private static final String SEQUENCE_FIELD_P4EMETHOD = "p4e method";
-
+	
 	/** The Constant SEQUENCE_FIELD_CDSSTART. */
 	private static final String SEQUENCE_FIELD_CDSSTART = "CDS start";
-
+	
 	/** The Constant SEQUENCE_FIELD_CDSEND. */
 	private static final String SEQUENCE_FIELD_CDSEND = "CDS end";
-
+	
 	/** The Constant SEQUENCE_FIELD_FRAME. */
 	private static final String SEQUENCE_FIELD_FRAME = "frame";
-
+	
 	/** The Constant SEQUENCE_FIELD_PREFIX_RPKM. */
 	private static final String SEQUENCE_FIELD_PREFIX_RPKM = "RPKM ";
-
+	
 	/** The Constant fourDecimalFormat. */
 	private static final DecimalFormat fourDecimalFormat = new DecimalFormat("#.0000", DecimalFormatSymbols.getInstance(Locale.ENGLISH) /* so that it uses dots rather than comas */);
-
+	
 	/** The Constant MANDATORY_SEQUENCE_FIELDS. */
 	private static final String[] MANDATORY_SEQUENCE_FIELDS = { SEQUENCE_FIELD_NAME, SEQUENCE_FIELD_SEQLENGTH};
-
+	
 	/** The abort if any sequence is invalid. */
 	private static boolean ABORT_IF_ANY_SEQUENCE_IS_INVALID = true;
-
+	
 	/**
 	 * The main method.
 	 *
@@ -88,9 +89,9 @@ public class SequenceStatImport {
 	{
 		if (args.length < 5)
 			throw new Exception("You must pass 5 parameters as arguments: DATASOURCE name, project name, run name, TSV-stats file, 5th parameter only supports values '2' (empty all database's sequence stats before importing), and '0' (no action over existing data)!");
-
+		
 		String sModule = args[0];
-
+		
 		GenericXmlApplicationContext ctx = null;
 		MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
 		if (mongoTemplate == null)
@@ -110,31 +111,31 @@ public class SequenceStatImport {
 			if (mongoTemplate == null)
 				throw new Exception("DATASOURCE '" + sModule + "' is not supported!");
 		}
-
+		
 		String sequenceStatCollName = MongoTemplateManager.getMongoCollectionName(SequenceStats.class);
-
+		
 		if ("2".equals(args[4]))
 		{	// empty project's sequence data before importing
 			if (mongoTemplate.collectionExists(sequenceStatCollName))
 			{
 				mongoTemplate.dropCollection(sequenceStatCollName);
 				LOG.info("Collection " + sequenceStatCollName + " dropped.");
-			}
-		}
+			}	
+		}	
 		else if ("0".equals(args[4]))
 		{
 			// do nothing
 		}
 		else
 			throw new Exception("5th parameter only supports values '2' (empty all database's sequence stats before importing), and '0' (no action over existing data)");
-
+		
 		ArrayList<SequenceStats> sequences = new ArrayList<SequenceStats>();
-
+		
 		LOG.info("Reading stat file");
 		BufferedReader mainFileReader = new BufferedReader(new InputStreamReader(new FileInputStream(new File(args[3]))));
 		StringBuffer errors = new StringBuffer();
 		String line;
-
+		
 		HashMap<String, Integer> fieldIndexes = new HashMap<String, Integer>();
 		int rowIndex = 0;
 		try
@@ -190,7 +191,7 @@ public class SequenceStatImport {
 					}
 					catch (NumberFormatException ignored)
 					{}
-
+				
 					SequenceStats seqStats = mongoTemplate.findById(name, SequenceStats.class);
 					String p4eMethod = ignoreSingleDot(splittedLine[fieldIndexes.get(SEQUENCE_FIELD_P4EMETHOD)]);
 					if (seqStats == null)
@@ -210,14 +211,14 @@ public class SequenceStatImport {
 					seqStats.setCdsEnd(cdsEnd);
 					seqStats.setFrame(frame);
 					seqStats.setP4eMethod(p4eMethod);
-
+					
 					HashMap<String, HashMap<String, Comparable>> sampleInfoMap = new HashMap<String, HashMap<String, Comparable>>();
 					List<MappingStats> theProjectData = seqStats.getProjectData().get(args[1]);
 					if (theProjectData == null)
 					{
 						theProjectData = new ArrayList<MappingStats>();
 						seqStats.getProjectData().put(args[1], theProjectData);
-					}
+					}					
 					MappingStats theMappingStats = null;
 					for (MappingStats mp : theProjectData)
 						if (args[2].equals(mp.getRunName()))
@@ -247,9 +248,9 @@ public class SequenceStatImport {
 							{
 								errors.append("\nUnable to parse rpkm value for sequence '" + name + "' in field " + sKey);
 							}
-
-							String sSampleName = sKey.split(" ")[1];
-
+						
+							String sSampleName = sKey.split(" ")[1];							
+							
 							HashMap<String, Comparable> sampleStats = new HashMap<String, Comparable>();
 							sampleStats.put(MappingStats.SAMPLE_INFO_FIELDNAME_RPKM, rpkmString /*store it as string because MongoDB does not store Floats accurately*/);
 							sampleInfoMap.put(sSampleName, sampleStats);
@@ -260,10 +261,10 @@ public class SequenceStatImport {
 				if (++rowIndex%1000 == 0)
 					System.out.print(rowIndex + " ");
 			}
-
+			
 			if (ABORT_IF_ANY_SEQUENCE_IS_INVALID && errors.length() > 0)
 				throw new Exception("ERRORS IN FILE CONTENTS: \n" + errors.toString());
-
+			
 			rowIndex = 0;
 			System.out.println();
 			LOG.info("Writing records to database");

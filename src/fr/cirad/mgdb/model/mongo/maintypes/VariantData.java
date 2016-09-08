@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongo.maintypes;
@@ -50,6 +50,7 @@ import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.Helper;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class VariantData.
  */
@@ -57,88 +58,91 @@ import fr.cirad.tools.Helper;
 @TypeAlias("VD")
 public class VariantData
 {
-
+	
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(VariantData.class);
-
+	
 	/** The Constant FIELDNAME_VERSION. */
 	public final static String FIELDNAME_VERSION = "v";
-
+	
+	/** The Constant FIELDNAME_ANALYSIS_METHODS. */
+	public final static String FIELDNAME_ANALYSIS_METHODS = "am";
+	
 	/** The Constant FIELDNAME_SYNONYMS. */
 	public final static String FIELDNAME_SYNONYMS = "sy";
-
+	
 	/** The Constant FIELDNAME_KNOWN_ALLELE_LIST. */
 	public final static String FIELDNAME_KNOWN_ALLELE_LIST = "ka";
-
+	
 	/** The Constant FIELDNAME_TYPE. */
 	public final static String FIELDNAME_TYPE = "ty";
-
+	
 	/** The Constant FIELDNAME_REFERENCE_POSITION. */
 	public final static String FIELDNAME_REFERENCE_POSITION = "rp";
-
+	
 	/** The Constant FIELDNAME_PROJECT_DATA. */
 	public final static String FIELDNAME_PROJECT_DATA = "pj";
-
+	
 	/** The Constant FIELDNAME_SYNONYM_TYPE_ID_ILLUMINA. */
 	public final static String FIELDNAME_SYNONYM_TYPE_ID_ILLUMINA = "il";
-
+	
 	/** The Constant FIELDNAME_SYNONYM_TYPE_ID_NCBI. */
 	public final static String FIELDNAME_SYNONYM_TYPE_ID_NCBI = "nc";
-
+	
 	/** The Constant FIELDNAME_SYNONYM_TYPE_ID_INTERNAL. */
 	public final static String FIELDNAME_SYNONYM_TYPE_ID_INTERNAL = "in";
-
+	
 	/** The Constant SECTION_ADDITIONAL_INFO. */
 	public final static String SECTION_ADDITIONAL_INFO = "ai";
 
 	/** The Constant FIELD_PHREDSCALEDQUAL. */
 	public static final String FIELD_PHREDSCALEDQUAL = "qual";
-
+	
 	/** The Constant FIELD_SOURCE. */
 	public static final String FIELD_SOURCE = "name";
-
+	
 	/** The Constant FIELD_FILTERS. */
 	public static final String FIELD_FILTERS = "filt";
-
+	
 	/** The Constant FIELD_FULLYDECODED. */
 	public static final String FIELD_FULLYDECODED = "fullDecod";
-
+	
 	/** The Constant FIELDVAL_SOURCE_MISSING. */
 	public static final String FIELDVAL_SOURCE_MISSING = "Unknown";
-
+	
 	/** The Constant GT_FIELD_GQ. */
 	public static final String GT_FIELD_GQ = "GQ";
-
+	
 	/** The Constant GT_FIELD_DP. */
 	public static final String GT_FIELD_DP = "DP";
-
+	
 	/** The Constant GT_FIELD_AD. */
 	public static final String GT_FIELD_AD = "AD";
-
+	
 	/** The Constant GT_FIELD_PL. */
 	public static final String GT_FIELD_PL = "PL";
-
+	
 	/** The Constant GT_FIELD_PHASED_GT. */
 	public static final String GT_FIELD_PHASED_GT = "phGT";
-
+	
 	/** The Constant GT_FIELD_PHASED_ID. */
 	public static final String GT_FIELD_PHASED_ID = "phID";
 
 	/** The Constant GT_FIELDVAL_AL_MISSING. */
 	public static final String GT_FIELDVAL_AL_MISSING = ".";
-
+	
 	/** The Constant GT_FIELDVAL_ID_MISSING. */
 	public static final String GT_FIELDVAL_ID_MISSING = ".";
-
+	
 	/** The id. */
 	@Id
 	private Comparable id;
-
+	
 	/** The version. */
 	@Version
 	@Field(FIELDNAME_VERSION)
     private Long version;
-
+	
 	/** The type. */
 	@Indexed
 	@Field(FIELDNAME_TYPE)
@@ -147,10 +151,14 @@ public class VariantData
 	/** The reference position. */
 	@Field(FIELDNAME_REFERENCE_POSITION)
 	ReferencePosition referencePosition = null;
-
+	
 	/** The synonyms. */
 	@Field(FIELDNAME_SYNONYMS)
 	private TreeMap<String /*synonym type*/, TreeSet<Comparable>> synonyms = new TreeMap<String, TreeSet<Comparable>>();
+
+	/** The list of analysis methods. */
+	@Field(FIELDNAME_ANALYSIS_METHODS)
+	private List<String> analysisMethods = null;
 
 	/** The known allele list. */
 	@Field(FIELDNAME_KNOWN_ALLELE_LIST)
@@ -167,7 +175,7 @@ public class VariantData
 	public VariantData() {
 		super();
 	}
-
+	
 	/**
 	 * Instantiates a new variant data.
 	 *
@@ -177,7 +185,7 @@ public class VariantData
 		super();
 		this.id = id;
 	}
-
+	
 	/**
 	 * Gets the id.
 	 *
@@ -222,6 +230,14 @@ public class VariantData
 	public void setSynonyms(TreeMap<String, TreeSet<Comparable>> synonyms) {
 		this.synonyms = synonyms;
 	}
+	
+	public List<String> getAnalysisMethods() {
+		return analysisMethods;
+	}
+
+	public void setAnalysisMethods(List<String> analysisMethods) {
+		this.analysisMethods = analysisMethods;
+	}
 
 	/**
 	 * Gets the type.
@@ -258,7 +274,7 @@ public class VariantData
 	public void setReferencePosition(ReferencePosition referencePosition) {
 		this.referencePosition = referencePosition;
 	}
-
+	
 	/**
 	 * Gets the known allele list.
 	 *
@@ -278,7 +294,7 @@ public class VariantData
 		for (String allele : this.knownAlleleList)
 			allele.intern();
 	}
-
+	
 	/**
 	 * Gets the additional info.
 	 *
@@ -298,7 +314,7 @@ public class VariantData
 	public void setAdditionalInfo(HashMap<String, Comparable> additionalInfo) {
 		this.additionalInfo = additionalInfo;
 	}
-
+	
 	/**
 	 * Static get alleles from genotype code.
 	 *
@@ -342,7 +358,7 @@ public class VariantData
 			throw new Exception("Variant ID: " + getId(), e);
 		}
 	}
-
+	
 	/**
 	 * Rebuild vcf format genotype.
 	 *
@@ -360,7 +376,7 @@ public class VariantData
 		orderedGenotypeAlleles.addAll(genotypeAlleles);
 		if(!keepCurrentPhasingInfo){
 			Collections.sort(orderedGenotypeAlleles);
-
+		
 		mainLoop: for (Allele gtA : orderedGenotypeAlleles)
 			if (gtA.isReference())
 				result += (result.length() == 0 ? "" : "/") + 0;
@@ -372,7 +388,7 @@ public class VariantData
 					if (altA.equals(gtA))
 					{
 						result += (result.length() == 0 ? "" : "/") + (i+1);
-						continue mainLoop;
+						continue mainLoop;						
 					}
 				}
 				if (!GT_FIELDVAL_AL_MISSING.equals(gtA.getBaseString()))
@@ -391,7 +407,7 @@ public class VariantData
 						if (altA.equals(gtA))
 						{
 							result += (result.length() == 0 ? "" : genotypeAllele.contains("|") ? "|" : "/") + (i+1);
-							continue mainLoop;
+							continue mainLoop;						
 						}
 					}
 					if (!GT_FIELDVAL_AL_MISSING.equals(gtA.getBaseString()))
@@ -400,7 +416,7 @@ public class VariantData
 		}
 		return result;
 	}
-
+		
 	/**
 	 * To variant context.
 	 *
@@ -422,10 +438,10 @@ public class VariantData
 
 		ArrayList<Allele> variantAlleles = new ArrayList<Allele>();
 		variantAlleles.add(Allele.create(sRefAllele, true));
-
+		
 		// collect all genotypes for all individuals
 		Map<String/*individual*/, HashMap<String/*genotype code*/, List<SampleId>>> individualSamplesByGenotype = new LinkedHashMap<String, HashMap<String, List<SampleId>>>();
-
+		
 		HashMap<SampleId, SampleGenotype> sampleGenotypes = new HashMap<SampleId, SampleGenotype>();
 		List<VariantRunData> runsWhereDataWasFound = new ArrayList<VariantRunData>();
 		List<String> individualList = new ArrayList<String>();
@@ -433,20 +449,20 @@ public class VariantData
 		{
 			if (runs == null || runs.size() == 0)
 				continue;
-
+			
 			Integer sampleIndex = spId.getSampleIndex();
-
+			
 			for (VariantRunData run : runs)
 			{
 				SampleGenotype sampleGenotype = run.getSampleGenotypes().get(sampleIndex);
 				if (sampleGenotype == null)
 					continue;	// run contains no data for this sample
-
+				
 				// keep track of SampleGenotype and Run so we can have access to additional info later on
 				sampleGenotypes.put(spId, sampleGenotype);
 				if (!runsWhereDataWasFound.contains(run))
 					runsWhereDataWasFound.add(run);
-
+				
 				String gtCode = /*isPhased ? (String) sampleGenotype.getAdditionalInfo().get(GT_FIELD_PHASED_GT) : */sampleGenotype.getCode();
 				String individualId = sampleIDToIndividualIdMap.get(spId);
 				if (!individualList.contains(individualId))
@@ -465,12 +481,12 @@ public class VariantData
 				samplesWithGivenGenotype.add(spId);
 			}
 		}
-
+			
 		individualLoop : for (String individualId : individualList)
 		{
 			HashMap<String, List<SampleId>> samplesWithGivenGenotype = individualSamplesByGenotype.get(individualId);
 			HashMap<Object, Integer> genotypeCounts = new HashMap<Object, Integer>(); // will help us to keep track of missing genotypes
-
+				
 			int highestGenotypeCount = 0;
 			String mostFrequentGenotype = null;
 			if (genotypes != null && samplesWithGivenGenotype != null)
@@ -486,18 +502,18 @@ public class VariantData
 					}
 					genotypeCounts.put(gtCode, gtCount);
 				}
-
+			
 			if (mostFrequentGenotype == null)
 				continue;	// no genotype for this individual
-
+			
 			if (warningFileWriter != null && genotypeCounts.size() > 1)
 				warningFileWriter.write("- Dissimilar genotypes found for variant " + (synonym == null ? getId() : synonym) + ", individual " + individualId + ". Exporting most frequent: " + mostFrequentGenotype + "\n");
-
+			
 			SampleId spId = samplesWithGivenGenotype.get(mostFrequentGenotype).get(0);	// any will do
 			SampleGenotype sampleGenotype = sampleGenotypes.get(spId);
-
+			
 			Comparable currentPhId = sampleGenotype.getAdditionalInfo().get(GT_FIELD_PHASED_ID);
-
+			
 			boolean isPhased = currentPhId != null && currentPhId.equals(previousPhasingIds.get(spId));
 
 			List<String> alleles = /*mostFrequentGenotype == null ? new ArrayList<String>() :*/ getAllelesFromGenotypeCode(isPhased ? (String) sampleGenotype.getAdditionalInfo().get(GT_FIELD_PHASED_GT) : mostFrequentGenotype);
@@ -505,7 +521,7 @@ public class VariantData
 			previousPhasingIds.put(spId, currentPhId == null ? getId() : currentPhId);
 			if (alleles.size() == 0)
 				continue;	/* skip this sample because there is no genotype for it */
-
+			
 			boolean fAllAllelesNoCall = true;
 			for (String allele : alleles)
 				if (allele.length() > 0)
@@ -528,7 +544,7 @@ public class VariantData
 				String genotypeFilters = (String) sampleGenotype.getAdditionalInfo().get(FIELD_FILTERS);
 				if (genotypeFilters != null && genotypeFilters.length() > 0)
 					gb.filter(genotypeFilters);
-
+				
 				for (String key : sampleGenotype.getAdditionalInfo().keySet())
 					if (GT_FIELD_GQ.equals(key))
 					{
@@ -581,22 +597,22 @@ public class VariantData
 		if (exportVariantIDs)
 			vcb.id((synonym == null ? getId() : synonym).toString());
 		vcb.genotypes(genotypes);
-
+		
 		if (run != null)
 		{
 			Boolean fullDecod = (Boolean) run.getAdditionalInfo().get(FIELD_FULLYDECODED);
 			vcb.fullyDecoded(fullDecod != null && fullDecod);
-
+	
 			String filters = (String) run.getAdditionalInfo().get(FIELD_FILTERS);
 			if (filters != null)
 				vcb.filters(filters.split(","));
 			else
 				vcb.filters(VCFConstants.UNFILTERED);
-
+			
 			Number qual = (Number) run.getAdditionalInfo().get(FIELD_PHREDSCALEDQUAL);
 			if (qual != null)
 				vcb.log10PError(qual.doubleValue() / -10.0D);
-
+			
 			List<String> alreadyTreatedAdditionalInfoFields = Arrays.asList(new String[] {FIELD_SOURCE, FIELD_FULLYDECODED, FIELD_FILTERS, FIELD_PHREDSCALEDQUAL});
 			for (String attrName : run.getAdditionalInfo().keySet())
 				if (!VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME.equals(attrName) && !VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_GENE.equals(attrName) && !alreadyTreatedAdditionalInfoFields.contains(attrName))
@@ -605,5 +621,5 @@ public class VariantData
 		VariantContext vc = vcb.make();
 		return vc;
 	}
-
+               
 }

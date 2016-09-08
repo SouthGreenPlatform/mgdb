@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongo.maintypes;
@@ -25,17 +25,18 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class AutoIncrementCounter.
  */
 @Document(collection="counters")
 @TypeAlias("AIC")
 public class AutoIncrementCounter
-{
-
+{	
+	
 	/** The id. */
 	@Id private String id;
-
+	
 	/** The seq. */
 	private int seq;
 
@@ -44,7 +45,7 @@ public class AutoIncrementCounter
 //		this.id = id;
 //		this.seq = seq;
 //	}
-
+	
 	/**
  * Instantiates a new auto increment counter.
  *
@@ -87,7 +88,7 @@ public AutoIncrementCounter(String id, int seq) {
 		AutoIncrementCounter counter = mongo.findAndModify(new Query(Criteria.where("_id").is(collectionName)), new Update().inc("seq", 1), FindAndModifyOptions.options().returnNew(true), AutoIncrementCounter.class);
 		if (counter != null)
 			return counter.getSeq();
-
+		
 		// counters collection contains no data for this type
 		counter = new AutoIncrementCounter(collectionName, 1);
 //		counter.setSeq(1);

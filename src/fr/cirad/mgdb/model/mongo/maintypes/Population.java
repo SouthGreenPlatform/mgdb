@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongo.maintypes;
@@ -21,6 +21,7 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class Population.
  */
@@ -28,31 +29,31 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @TypeAlias("P")
 public class Population
 {
-
+	
 	/** The Constant FIELDNAME_NAME. */
 	public final static String FIELDNAME_NAME = "nm";
-
+	
 	/** The Constant FIELDNAME_DESCRIPTION. */
 	public final static String FIELDNAME_DESCRIPTION = "ds";
-
+	
 	/** The Constant FIELDNAME_POPULATION_GROUP. */
 	public final static String FIELDNAME_POPULATION_GROUP = "pg";
-
+	
 	/** The id. */
 	@Id
 	private String id;
 
 	/** The name. */
 	@Field(FIELDNAME_NAME)
-	private String name;
-
+	private String name;	
+	
 	/** The description. */
 	@Field(FIELDNAME_DESCRIPTION)
-	private String description;
+	private String description;	
 
 	/** The pop group. */
 	@Field(FIELDNAME_POPULATION_GROUP)
-	private String popGroup;
+	private String popGroup;	
 
 	/**
 	 * Instantiates a new population.
@@ -71,7 +72,7 @@ public class Population
 	public String getId() {
 		return id;
 	}
-
+	
 //	public void setId(String id) {
 //		this.id = id;
 //	}
@@ -120,7 +121,7 @@ public String getName() {
 	public boolean isOutgroup() {
 		return "OUT".equals(popGroup);
 	}
-
+	
 	/**
 	 * Gets the pop group.
 	 *

@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.importing;
@@ -24,11 +24,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
 import org.broadinstitute.gatk.utils.codecs.hapmap.RawHapMapCodec;
@@ -58,11 +56,12 @@ import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class HapMapImport.
  */
 public class HapMapImport {
-
+	
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(VariantData.class);
 
@@ -94,7 +93,7 @@ public class HapMapImport {
 	 */
 	public static void main(String[] args) throws Exception {
 		if (args.length < 5)
-			throw new Exception("You must pass 5 parameters as arguments: DATASOURCE name, PROJECT name, RUN name, TECHNOLOGY string, and VCF file! An optional 6th parameter supports values '1' (empty project data before importing) and '2' (empty all variant data before importing, including marker list).");
+			throw new Exception("You must pass 5 parameters as arguments: DATASOURCE name, PROJECT name, RUN name, TECHNOLOGY string, and HapMap file! An optional 6th parameter supports values '1' (empty project data before importing) and '2' (empty all variant data before importing, including marker list).");
 
 		File mainFile = new File(args[4]);
 		if (!mainFile.exists() || mainFile.length() == 0)
@@ -126,14 +125,9 @@ public class HapMapImport {
 	public void importToMongo(String sModule, String sProject, String sRun, String sTechnology, String mainFilePath, int importMode) throws Exception
 	{
 		long before = System.currentTimeMillis();
-
-		ProgressIndicator progress = ProgressIndicator.get(m_processID);
-		if (progress == null)
-		{
-			progress = new ProgressIndicator(m_processID, new String[] {"Initializing import"});	// better to add it straight-away so the JSP doesn't get null in return when it checks for it (otherwise it will assume the process has ended)
-			ProgressIndicator.registerProgressIndicator(progress);
-		}		
-		progress.setPercentageEnabled(false);
+		ProgressIndicator progress = new ProgressIndicator(m_processID, new String[] {"Initializing import"});	// better to add it straight-away so the JSP doesn't get null in return when it checks for it (otherwise it will assume the process has ended)
+		ProgressIndicator.registerProgressIndicator(progress);
+		progress.setPercentageEnabled(false);		
 
 		FeatureReader<RawHapMapFeature> reader = AbstractFeatureReader.getFeatureReader(mainFilePath, new RawHapMapCodec(), false);
 		GenericXmlApplicationContext ctx = null;
@@ -161,68 +155,11 @@ public class HapMapImport {
 			if (m_processID == null)
 				m_processID = "IMPORT__" + sModule + "__" + sProject + "__" + sRun + "__" + System.currentTimeMillis();
 
-			String info = "Inspecting / cleaning up existing data";
-			LOG.info(info);
-			progress.addStep(info);
-			progress.moveToNextStep();
-			
 			GenotypingProject project = mongoTemplate.findOne(new Query(Criteria.where(GenotypingProject.FIELDNAME_NAME).is(sProject)), GenotypingProject.class);
 
-			boolean fProjectExisted = project != null;
-			if (!fProjectExisted || importMode == 2)
-			{	// create new project
-				project = new GenotypingProject(AutoIncrementCounter.getNextSequence(mongoTemplate, MongoTemplateManager.getMongoCollectionName(GenotypingProject.class)));
-				project.setName(sProject);
-				project.setOrigin(2 /* Sequencing */);
-				project.setTechnology(sTechnology);
-			}
-			
-			TreeMap<Integer, GenotypingSample> runSamples = new TreeMap<Integer, GenotypingSample>();
-			HashMap<String /*individual*/, SampleId> samplesToAdd = new HashMap<String /*individual*/, SampleId>();
-			Iterator<RawHapMapFeature> featureReaderIterator = reader.iterator();
-			String[] individuals = !featureReaderIterator.hasNext() ? new String[0] : featureReaderIterator.next().getSampleIDs();
-			for (String sIndividual : individuals)
-			{
-				if (!samplesToAdd.containsKey(sIndividual))	// we don't want to persist each sample several times
-				{
-					Integer sampleIndex = null;
-					List<Integer> sampleIndices = project.getIndividualSampleIndexes(sIndividual);
-					if (sampleIndices.size() > 0)
-						mainLoop : for (Integer index : sampleIndices)	// see if we should re-use an existing sample (we assume it's the same sample if it's the same run)
-						{
-							List<Criteria> crits = new ArrayList<Criteria>();
-							crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId()));
-							crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_RUNNAME).is(sRun));
-							crits.add(Criteria.where(VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + index).exists(true));
-							Query q = new Query(new Criteria().andOperator(crits.toArray(new Criteria[crits.size()])));
-							q.fields().include(VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + index);
-							VariantRunData variantRunDataWithDataForThisSample = mongoTemplate.findOne(q, VariantRunData.class);
-							if (variantRunDataWithDataForThisSample != null)
-							{
-								sampleIndex = index;
-								break mainLoop;
-							}
-						}
-
-					if (sampleIndex == null)
-					{	// no sample exists for this individual in this project and run, we need to create one
-						sampleIndex = runSamples.size() + 1;
-						try
-						{
-							sampleIndex += (Integer) project.getSamples().keySet().toArray(new Comparable[project.getSamples().size()])[project.getSamples().size() - 1];
-						}
-						catch (ArrayIndexOutOfBoundsException ignored)
-						{}	// if array was empty, we keep 1 for the first id value
-//						LOG.info("Sample created for individual " + sIndividual + " with index " + sampleIndex);
-					}
-					runSamples.put(sampleIndex, new GenotypingSample(sIndividual));
-					samplesToAdd.put(sIndividual, new SampleId(project.getId(), sampleIndex));	// add a sample for this individual to the project
-				}
-			}
-			
 			if (importMode == 2) // drop database before importing
 				mongoTemplate.getDb().dropDatabase();
-			else if (fProjectExisted)
+			else if (project != null)
 			{
 				if (importMode == 1) // empty project data before importing
 				{
@@ -232,26 +169,15 @@ public class HapMapImport {
 					LOG.info(wr.getN() + " records removed from variantRunData");
 					wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
 					project.getRuns().clear();
-					project.getSamples().clear();
-					project.getSequences().clear();
-					project.getAlleleCounts().clear();
 				}
 				else // empty run data before importing
 				{
-					WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId()).and("_id." + VcfHeaderId.FIELDNAME_RUN).is(sRun)), DBVCFHeader.class);
+                    WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId()).and("_id." + VcfHeaderId.FIELDNAME_RUN).is(sRun)), DBVCFHeader.class);
 					LOG.info(wr.getN() + " records removed from vcf_header");
 					List<Criteria> crits = new ArrayList<Criteria>();
 					crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId()));
 					crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_RUNNAME).is(sRun));
 					crits.add(Criteria.where(VariantRunData.FIELDNAME_SAMPLEGENOTYPES).exists(true));
-					
-					// if we are overwriting a run, delete useless samples
-					VariantRunData vrd = mongoTemplate.findOne(new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId()).and("_id." + VariantRunDataId.FIELDNAME_RUNNAME).is(sRun)), VariantRunData.class);
-					if (vrd != null)
-						for (int sampleIndex : vrd.getSampleGenotypes().keySet())
-							if (!samplesToAdd.keySet().contains(project.getSamples().get(sampleIndex).getIndividual()))
-								project.getSamples().remove(sampleIndex);
-								
 					wr = mongoTemplate.remove(new Query(new Criteria().andOperator(crits.toArray(new Criteria[crits.size()]))), VariantRunData.class);
 					LOG.info(wr.getN() + " records removed from variantRunData");
 					wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);	// we are going to re-write it
@@ -259,15 +185,6 @@ public class HapMapImport {
 				if (mongoTemplate.count(null, VariantRunData.class) == 0)
 					mongoTemplate.getDb().dropDatabase(); // if there is no genotyping data then any other data is irrelevant
 			}
-			
-			// (re-)build list of individuals
-			project.getSamples().putAll(runSamples);
-			HashSet<String> individualNames = new HashSet<String>();
-			for (int sampleIndex : project.getSamples().keySet())
-				individualNames.add(project.getSamples().get(sampleIndex).getIndividual());
-			mongoTemplate.dropCollection(Individual.class);
-			for (String individualName : individualNames)
-				mongoTemplate.insert(new Individual(individualName));
 
 			// create project if necessary
 			if (project == null || importMode == 2)
@@ -293,12 +210,12 @@ public class HapMapImport {
 			}
 			if (existingVariantIDs.size() > 0)
 			{
-				info = existingVariantIDs.size() + " VariantData record IDs were scanned in " + (System.currentTimeMillis() - beforeReadingAllVariants) / 1000 + "s";
+				String info = existingVariantIDs.size() + " VariantData record IDs were scanned in " + (System.currentTimeMillis() - beforeReadingAllVariants) / 1000 + "s";
 				LOG.info(info);
 				progress.addStep(info);
 				progress.moveToNextStep();
 			}
-
+			
 			if (!project.getVariantTypes().contains(Type.SNP.toString()))
 				project.getVariantTypes().add(Type.SNP.toString());
 
@@ -307,30 +224,28 @@ public class HapMapImport {
 			int nNumberOfVariantsToSaveAtOnce = 1;
 			ArrayList<VariantData> unsavedVariants = new ArrayList<VariantData>();
 			ArrayList<VariantRunData> unsavedRuns = new ArrayList<VariantRunData>();
+			HashMap<String /*individual*/, SampleId> previouslyCreatedSamples = new HashMap<String /*individual*/, SampleId>();
 			Iterator<RawHapMapFeature> it = reader.iterator();
 			progress.addStep("Processing variant lines");
 			progress.moveToNextStep();
 			while (it.hasNext())
 			{
-				RawHapMapFeature hmFeature = it.next();
+				RawHapMapFeature hmFeature = it.next();               
 				String variantDescForPos = Type.SNP.toString() + "::" + hmFeature.getChr() + "::" + hmFeature.getStart();
 				try
 				{
 					Comparable variantId = existingVariantIDs.get(variantDescForPos);
 					VariantData variant = variantId == null ? null : mongoTemplate.findById(variantId, VariantData.class);
 					if (variant == null)
-					{
-						String hmFeatureId = hmFeature.getName();
-						variant = new VariantData(hmFeatureId != null && hmFeatureId.length() > 0 ? (ObjectId.isValid(hmFeatureId) ? new ObjectId(hmFeatureId) : hmFeatureId) : new ObjectId());
-					}
+						variant = new VariantData(hmFeature.getName() != null && hmFeature.getName().length() > 0 ? hmFeature.getName() : new ObjectId());
 					unsavedVariants.add(variant);
-					VariantRunData runToSave = addHapMapDataToVariant(mongoTemplate, variant, hmFeature, project, sRun, samplesToAdd);
+					VariantRunData runToSave = addHapMapDataToVariant(mongoTemplate, variant, hmFeature, project, sRun, previouslyCreatedSamples);
 					if (!unsavedRuns.contains(runToSave))
 							unsavedRuns.add(runToSave);
 
 					if (count == 0)
 					{
-						nNumberOfVariantsToSaveAtOnce = Math.max(1, 30000 / Math.max(1, hmFeature.getSampleIDs().length));
+						nNumberOfVariantsToSaveAtOnce = Math.max(1, 30000 / hmFeature.getSampleIDs().length);
 						LOG.info("Importing by chunks of size " + nNumberOfVariantsToSaveAtOnce);
 					}
 					if (count % nNumberOfVariantsToSaveAtOnce == 0)
@@ -353,12 +268,12 @@ public class HapMapImport {
 						progress.setCurrentStepProgress(count);
 						if (count > 0)
 						{
-							info = count + " lines processed"/*"(" + (System.currentTimeMillis() - before) / 1000 + ")\t"*/;
+							String info = count + " lines processed"/*"(" + (System.currentTimeMillis() - before) / 1000 + ")\t"*/;
 							LOG.debug(info);
 						}
 					}
 
-					int ploidy = 2;	// the only one supported by HapMap format
+					int ploidy = 2;	// the only one supported by HapMap format 
 					if (project.getPloidyLevel() < ploidy)
 						project.setPloidyLevel(ploidy);
 
@@ -387,7 +302,7 @@ public class HapMapImport {
 				for (VariantData vd : unsavedVariants)
 					mongoTemplate.save(vd);
 				for (VariantRunData run : unsavedRuns)
-					mongoTemplate.save(run);
+					mongoTemplate.save(run);							
 			}
 
 			// save project data
@@ -395,7 +310,7 @@ public class HapMapImport {
 				project.getRuns().add(sRun);
 			mongoTemplate.save(project);
 
-			LOG.info("VariantImport took " + (System.currentTimeMillis() - before) / 1000 + "s for " + count + " records");
+			LOG.info("HapMapImport took " + (System.currentTimeMillis() - before) / 1000 + "s for " + count + " records");
 
 			progress.addStep("Preparing database for searches");
 			progress.moveToNextStep();
@@ -416,7 +331,7 @@ public class HapMapImport {
 	 *
 	 * @param mongoTemplate the mongo template
 	 * @param variantToFeed the variant to feed
-	 * @param hmFeature the hapmap feature
+	 * @param hmFeature the hm feature
 	 * @param project the project
 	 * @param runName the run name
 	 * @param usedSamples the used samples
@@ -434,15 +349,15 @@ public class HapMapImport {
 		List<String> knownAlleleList = new ArrayList<String>();
 		if (variantToFeed.getKnownAlleleList().size() > 0)
 			knownAlleleList.addAll(variantToFeed.getKnownAlleleList());
-		variantToFeed.setKnownAlleleList(Arrays.asList(hmFeature.getAlleles()));
+		variantToFeed.setKnownAlleleList(Arrays.asList(hmFeature.getAlleles()));	/*FIXME: dodgy code (can't we loose existing alleles doing this?)*/
 
 		if (variantToFeed.getReferencePosition() == null)	// otherwise we leave it as it is (had some trouble with overridden end-sites)
 			variantToFeed.setReferencePosition(new ReferencePosition(hmFeature.getChr(), hmFeature.getStart(), (long) hmFeature.getEnd()));
 
 		VariantRunData run = new VariantRunData(new VariantRunData.VariantRunDataId(project.getId(), runName, variantToFeed.getId()));
-
+	
 		String[] knownAlleles = hmFeature.getAlleles();
-
+			
 		// genotype fields
 		for (int i=0; i<hmFeature.getGenotypes().length; i++)
 		{
@@ -454,27 +369,71 @@ public class HapMapImport {
 			{
 				String allele1 = genotype.substring(0, 1);
 				String allele2 = genotype.substring(1, 2);
-
+				
 				int nRefAlleleCount = 0, altAlleleCount = 0;
-
+				
 				if (knownAlleles[0].equals(allele1))
 					nRefAlleleCount++;
-				else if (knownAlleles.length > 1 && knownAlleles[1].equals(allele1))
+				else if (knownAlleles[1].equals(allele1))
 					altAlleleCount++;
-
+							
 				if (knownAlleles[0].equals(allele2))
 					nRefAlleleCount++;
-				else if (knownAlleles.length > 1 && knownAlleles[1].equals(allele2))
+				else if (knownAlleles[1].equals(allele2))
 					altAlleleCount++;
-
+				
 				if (nRefAlleleCount + altAlleleCount == 2)
 					gtCode = nRefAlleleCount == 2 ? "0/0" : (nRefAlleleCount == 1 ? "0/1" : "1/1");
 			}
-
+			
 			if (gtCode.length() == 0 && !"NN".equals(genotype))
 				LOG.warn("Ignoring invalid HapMap genotype \"" + gtCode + "\" for variant " + variantToFeed.getId() + " and individual " + sIndividual);
 
 			SampleGenotype aGT = new SampleGenotype(gtCode);
+
+			if (!usedSamples.containsKey(sIndividual))	// we don't want to persist each sample several times
+			{
+				Individual ind = mongoTemplate.findById(sIndividual, Individual.class);
+				if (ind == null)
+				{	// we don't have any population data so we don't need to update the Individual if it already exists
+					ind = new Individual(sIndividual);
+					mongoTemplate.save(ind);
+				}
+
+				Integer sampleIndex = null;
+				List<Integer> sampleIndices = project.getIndividualSampleIndexes(sIndividual);
+				if (sampleIndices.size() > 0)
+					mainLoop : for (Integer index : sampleIndices)	// see if we should re-use an existing sample (we assume it's the same sample if it's the same run)
+					{
+						List<Criteria> crits = new ArrayList<Criteria>();
+						crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId()));
+						crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_RUNNAME).is(runName));
+						crits.add(Criteria.where(VariantRunData.FIELDNAME_SAMPLEGENOTYPES).exists(true));
+						Query q = new Query(new Criteria().andOperator(crits.toArray(new Criteria[crits.size()])));
+						q.fields().include(VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + index);
+						VariantRunData variantRunDataWithDataForThisSample = mongoTemplate.findOne(q, VariantRunData.class);
+						if (variantRunDataWithDataForThisSample != null)
+						{
+							sampleIndex = index;
+							break mainLoop;
+						}
+					}
+
+				if (sampleIndex == null)
+				{	// no sample exists for this individual in this project and run, we need to create one
+					sampleIndex = 1;
+					try
+					{
+						sampleIndex += (Integer) project.getSamples().keySet().toArray(new Comparable[project.getSamples().size()])[project.getSamples().size() - 1];
+					}
+					catch (ArrayIndexOutOfBoundsException ignored)
+					{}	// if array was empty, we keep 1 for the first id value
+					project.getSamples().put(sampleIndex, new GenotypingSample(sIndividual));
+//					LOG.info("Sample created for individual " + sIndividual + " with index " + sampleIndex);
+				}
+				usedSamples.put(sIndividual, new SampleId(project.getId(), sampleIndex));	// add a sample for this individual to the project
+			}			
+
 			run.getSampleGenotypes().put(usedSamples.get(sIndividual).getSampleIndex(), aGT);
 		}
 		return run;

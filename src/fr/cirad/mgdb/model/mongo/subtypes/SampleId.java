@@ -11,11 +11,12 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongo.subtypes;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class SampleId.
  */
@@ -23,7 +24,7 @@ public class SampleId /*implements java.io.Serializable, IGenotypingSampleIndex*
 
 	/** The project. */
 	private Integer project;
-
+	
 	/** The sample index. */
 	private Integer sampleIndex;
 
@@ -87,7 +88,7 @@ public class SampleId /*implements java.io.Serializable, IGenotypingSampleIndex*
     public int hashCode() {
         return toString().hashCode();
     }
-
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
@@ -96,20 +97,20 @@ public class SampleId /*implements java.io.Serializable, IGenotypingSampleIndex*
 	{
 		if (this == o)
 			return true;
-
+		
 		if (o == null || !(o instanceof SampleId))
 			return false;
-
+		
 		boolean f1 = ((SampleId)o).getSampleIndex() == getSampleIndex() || (getSampleIndex() != null && getSampleIndex().equals(((SampleId)o).getSampleIndex()));
 		boolean f2 = ((SampleId)o).getProject() == getProject() || (getProject() != null && getProject().equals(((SampleId)o).getProject()));
 		return f2 && f1;
 	}
-
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Object#toString()
 	 */
 	public String toString()
 	{
-		return getProject() + "¤" + getSampleIndex();
+		return getProject() + "&curren;" + getSampleIndex();
 	}
 }

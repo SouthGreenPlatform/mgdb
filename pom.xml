@@ -1,180 +1,152 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
-	<modelVersion>4.0.0</modelVersion>
-	<name>Mongo Genotype DataBase</name>
-	<groupId>fr.cirad</groupId>
-	<artifactId>mgdb</artifactId>
-	<version>1.0-RELEASE</version>
-	<description>
-	</description>
-	<developers>
-		<developer>
-			<name>Guilhem SEMPERE</name>
-		</developer>
-	</developers>
+    <modelVersion>4.0.0</modelVersion>
+    <name>Mongo Genotype DataBase</name>
+    <groupId>fr.cirad</groupId>
+    <artifactId>mgdb</artifactId>
+    <version>1.0-RELEASE</version>
+    
+    <parent>
+        <groupId>fr.cirad</groupId>
+        <artifactId>GIGWA</artifactId>
+        <version>1.0-RELEASE</version>
+    </parent>
+    
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <netbeans.hint.licensePath>${project.parent.basedir}/licenseheader.txt</netbeans.hint.licensePath>
+    </properties>
+    
+    <developers>
+        <developer>
+            <name>Guilhem SEMPERE</name>
+        </developer>
+    </developers>
 
-	<dependencies>
+    <dependencies>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.16</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.sun.jmx</groupId>
+                    <artifactId>jmxri</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>javax.jms</groupId>
+                    <artifactId>jms</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.jdmk</groupId>
+                    <artifactId>jmxtools</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>javax.mail</groupId>
+                    <artifactId>mail</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.github.samtools</groupId>
+            <artifactId>htsjdk</artifactId>
+            <version>1.143</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-compress</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.tukaani</groupId>
+                    <artifactId>xz</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.ant</groupId>
+                    <artifactId>ant</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.testng</groupId>
+                    <artifactId>testng</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.xerial.snappy</groupId>
+                    <artifactId>snappy-java</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>de.johoop</groupId>
+                    <artifactId>sbt-testng-interface_2.10</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+		
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongo-java-driver</artifactId>
+            <version>3.2.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-mongodb</artifactId>
+            <version>1.9.1.RELEASE</version>
+        </dependency>
 	
-		<dependency>
-			<groupId>com.github.samtools</groupId>
-			<artifactId>htsjdk</artifactId>
-			<version>1.143</version>
-			<exclusions>
-				<exclusion>
-				  	<groupId>org.apache.commons</groupId>
-					<artifactId>commons-compress</artifactId>
-				</exclusion>
-				<exclusion>
-		            <groupId>org.tukaani</groupId>
-		            <artifactId>xz</artifactId>
-				</exclusion>
-				<exclusion>
-		            <groupId>org.apache.ant</groupId>
-		            <artifactId>ant</artifactId>
-				</exclusion>
-				<exclusion>
-		            <groupId>org.testng</groupId>
-		            <artifactId>testng</artifactId>
-				</exclusion>
-				<exclusion>
-		            <groupId>org.xerial.snappy</groupId>
-		            <artifactId>snappy-java</artifactId>
-				</exclusion>
-				<exclusion>
-		            <groupId>de.johoop</groupId>
-		            <artifactId>sbt-testng-interface_2.10</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		
-		<dependency>
-			<groupId>commons-lang</groupId>
-			<artifactId>commons-lang</artifactId>
-			<version>2.6</version>
-		</dependency>
+          <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.11</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>1.4</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>fr.cirad</groupId>
+            <artifactId>GenotypeFileManipulation</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <type>jar</type>
+        </dependency>
+    </dependencies>
 
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			<version>3.4</version>
-		</dependency>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>2.4.3</version>
+                <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+        </plugins>
+        <sourceDirectory>${project.basedir}/src</sourceDirectory>
+    </build>
 
-		<dependency>
-			<groupId>org.mongodb</groupId>
-			<artifactId>mongo-java-driver</artifactId>
-			<version>3.2.0</version>
-		</dependency>
 
-		<dependency>
-			<groupId>org.springframework.data</groupId>
-			<artifactId>spring-data-mongodb</artifactId>
-			<version>1.7.2.RELEASE</version>
-		</dependency>
-		
-<!-- 		<dependency> -->
-<!-- 		    <groupId>org.utgenome</groupId> -->
-<!-- 		    <artifactId>utgb-toolkit</artifactId> -->
-<!-- 		    <version>1.5.9</version> -->
-<!-- 		</dependency> -->
-	
-		<dependency>
-			<groupId>org.biojava</groupId>
-			<artifactId>biojava3-core</artifactId>
-			<version>3.0</version>
-		</dependency>
-		
-		<dependency>
-		    <groupId>org.xerial</groupId>
-		    <artifactId>xerial-core</artifactId>
-		    <version>1.0.21</version>
-		</dependency>
-
-		<dependency>
-			<groupId>log4j</groupId>
-			<artifactId>log4j</artifactId>
-			<version>1.2.16</version>
-			<exclusions>
-				<exclusion>
-					<groupId>com.sun.jmx</groupId>
-					<artifactId>jmxri</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>javax.jms</groupId>
-					<artifactId>jms</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>com.sun.jdmk</groupId>
-					<artifactId>jmxtools</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>javax.mail</groupId>
-					<artifactId>mail</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-
-	</dependencies>
-
-	<repositories>
-<!-- 	    <repository> -->
-<!-- 	      <id>utgb</id> -->
-<!-- 	      <name>UTGB Artifact Repository</name> -->
-<!-- 	      <url>http://maven.utgenome.org/repository/artifact</url> -->
-<!-- 	    </repository> -->
-		<repository>
-			<id>sonatype-snapshot</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-		</repository>
-		<repository>
-			<id>plovdiv</id>
-			<url>http://ambit.uni-plovdiv.bg:8083/nexus/content/repositories/thirdparty/</url>
-		</repository>
-		<repository>
-			<id>spring-snapshot</id>
-			<url>http://repo.springsource.org/libs-snapshot</url>
-		</repository>
-		<repository>
-			<id>ibiblio</id>
-			<url>http://mirrors.ibiblio.org/pub/mirrors/maven2</url>
-		</repository>
-		<repository>
-			<id>FZI Repository</id>
-			<url>http://mavenrepo.fzi.de/semweb4j.org/repo/</url>
-		</repository>
-		<repository>
-			<id>java.net-m2</id>
-			<url>http://download.java.net/maven/2</url>
-		</repository>
-		<repository>
-			<id>xerial</id>
-			<url>http://maven.xerial.org/repository/artifact</url>
-		</repository>
-		<repository>
-			<id>hadoop-bam</id>
-			<url>http://hadoop-bam.sourceforge.net/maven/</url>
-		</repository>
-	</repositories>
-
-<!--   <build> -->
-<!--     <sourceDirectory>src</sourceDirectory> -->
-<!-- 	   <plugins> -->
-<!-- 	     <plugin> -->
-<!-- 	       <artifactId>maven-compiler-plugin</artifactId> -->
-<!-- 	       <version>3.1</version> -->
-<!-- 	       <configuration> -->
-<!-- 	         <source/> -->
-<!-- 	         <target/> -->
-<!-- 	       </configuration> -->
-<!-- 	     </plugin> -->
-<!-- 		 <plugin> -->
-<!-- 			<artifactId>maven-compiler-plugin</artifactId> -->
-<!-- 			<configuration> -->
-<!-- 				<source>1.7</source> -->
-<!-- 				<target>1.7</target> -->
-<!-- 			</configuration> -->
-<!-- 		 </plugin> -->
-<!--     </plugins> -->
-<!--   </build> -->
-
+  
 </project>

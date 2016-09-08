@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.tools;
@@ -27,48 +27,49 @@ import java.util.TimerTask;
 
 import org.apache.log4j.Logger;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class ProgressIndicator.
  */
 public class ProgressIndicator
 {
-
+	
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(ProgressIndicator.class);
-
+	
 	/** The Constant progressIndicators. */
 	static private final HashMap<String, ProgressIndicator> progressIndicators = new HashMap<String, ProgressIndicator>();
-
+	
 	/** The m_process id. */
 	private String m_processId;
-
+	
 	/** The m_current step progress. */
 	private long m_currentStepProgress = 0;
-
+	
 	/** The m_current step number. */
 	private short m_currentStepNumber = 0;
-
+	
 	/** The m_step labels. */
 	private List<String> m_stepLabels = new ArrayList<String>();
-
+	
 	/** The m_error. */
 	private String m_error = null;
-
+	
 	/** The m_notification email. */
 	private String m_notificationEmail = null;
-
+	
 	/** The m_description. */
 	private String m_description = null;
-
+	
 	/** The m_f aborted. */
 	private boolean m_fAborted = false;
-
+	
 	/** The m_f complete. */
 	private boolean m_fComplete = false;
-
+	
 	/** The m_f supports percentage. */
 	private boolean m_fSupportsPercentage = true;
-
+	
 	/** The us number format. */
 	static private NumberFormat usNumberFormat = NumberFormat.getNumberInstance(Locale.US);
 
@@ -83,7 +84,7 @@ public class ProgressIndicator
 		m_processId = sProcessId;
 		m_stepLabels.addAll(Arrays.asList(stepLabels));
 	}
-
+	
 	/**
 	 * Sets the percentage enabled.
 	 *
@@ -93,7 +94,7 @@ public class ProgressIndicator
 	{
 		m_fSupportsPercentage = fEnabled;
 	}
-
+	
 	/**
 	 * Adds the step.
 	 *
@@ -103,7 +104,7 @@ public class ProgressIndicator
 	{
 		m_stepLabels.add(sStepLabel);
 	}
-
+		
 	/**
 	 * Gets the step label.
 	 *
@@ -171,7 +172,7 @@ public class ProgressIndicator
 	public short getStepCount() {
 		return (short) m_stepLabels.size();
 	}
-
+	
 	/**
 	 * Gets the error.
 	 *
@@ -188,14 +189,14 @@ public class ProgressIndicator
 	 */
 	public void setError(String error) {
 		m_error = error;
-		new Timer().schedule(new TimerTask() {
+		new Timer().schedule(new TimerTask() {          
 		    @Override
 		    public void run() {
 		    	progressIndicators.remove(m_processId);
 		    }
 		}, 10000);
 	}
-
+	
 	/**
 	 * Gets the notification email.
 	 *
@@ -213,7 +214,7 @@ public class ProgressIndicator
 	public void setNotificationEmail(String notificationEmail) {
 		m_notificationEmail = notificationEmail;
 	}
-
+	
 	/**
 	 * Sets the progress description.
 	 *
@@ -222,7 +223,7 @@ public class ProgressIndicator
 	public void setProgressDescription(String description) {
 		m_description = description;
 	}
-
+	
 	/**
 	 * Gets the progress description.
 	 *
@@ -231,13 +232,13 @@ public class ProgressIndicator
 	public String getProgressDescription() {
 		if (m_stepLabels.size() <= m_currentStepNumber)
 			return "Please wait...";
-
+		
 		if (m_description != null)
 			return m_description;
 
 		return m_stepLabels.get(m_currentStepNumber) + "... " + (m_currentStepProgress == 0 ? "" : ((m_fSupportsPercentage ? m_currentStepProgress : usNumberFormat.format(m_currentStepProgress)) + (m_fSupportsPercentage ? "%" : "")));
 	}
-
+	
 	/**
 	 * Abort.
 	 */
@@ -245,7 +246,7 @@ public class ProgressIndicator
 		m_fAborted = true;
 		progressIndicators.remove(m_processId);
 	}
-
+	
 	/**
 	 * Checks for aborted.
 	 *
@@ -254,14 +255,14 @@ public class ProgressIndicator
 	public boolean hasAborted() {
 		return m_fAborted;
 	}
-
+	
 	/**
 	 * Mark as complete.
 	 */
 	public void markAsComplete() {
 		m_fComplete = true;
 	}
-
+	
 	/**
 	 * Checks if is complete.
 	 *
@@ -270,7 +271,7 @@ public class ProgressIndicator
 	public boolean isComplete() {
 		return m_fComplete;
 	}
-
+	
 	/**
 	 * Gets the.
 	 *
@@ -288,7 +289,7 @@ public class ProgressIndicator
 
 		return progress;
 	}
-
+	
 	/**
 	 * Register progress indicator.
 	 *

@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongo.subtypes;
@@ -27,6 +27,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class VariantRunData.
  */
@@ -37,16 +38,16 @@ import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 })
 public class VariantRunData
 {
-
+	
 	/** The Constant FIELDNAME_SAMPLEGENOTYPES. */
 	public final static String FIELDNAME_SAMPLEGENOTYPES = "sp";
-
+	
 	/** The Constant SECTION_ADDITIONAL_INFO. */
 	public final static String SECTION_ADDITIONAL_INFO = "ai";
-
+	
 	/** The Constant FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME. */
 	public final static String FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME = "EFF_nm";
-
+	
 	/** The Constant FIELDNAME_ADDITIONAL_INFO_EFFECT_GENE. */
 	public final static String FIELDNAME_ADDITIONAL_INFO_EFFECT_GENE = "EFF_ge";
 
@@ -55,13 +56,13 @@ public class VariantRunData
 	 */
 	static public class VariantRunDataId
 	{
-
+		
 		/** The Constant FIELDNAME_PROJECT_ID. */
 		public final static String FIELDNAME_PROJECT_ID = "pi";
-
+		
 		/** The Constant FIELDNAME_RUNNAME. */
 		public final static String FIELDNAME_RUNNAME = "rn";
-
+		
 		/** The Constant FIELDNAME_VARIANT_ID. */
 		public final static String FIELDNAME_VARIANT_ID = "vi";
 
@@ -204,7 +205,7 @@ public HashMap<Integer, SampleGenotype> getSampleGenotypes() {
 	 */
 	public HashMap<String, Object> getAdditionalInfo() {
 		if (additionalInfo == null)
-			additionalInfo = new HashMap<String, Object>();
+			additionalInfo = new HashMap<>();
 		return additionalInfo;
 	}
 
@@ -216,18 +217,19 @@ public HashMap<Integer, SampleGenotype> getSampleGenotypes() {
 	public void setAdditionalInfo(HashMap<String, Object> additionalInfo) {
 		this.additionalInfo = additionalInfo;
 	}
-
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
+        @Override
 	public boolean equals(Object o)
 	{
 		if (this == o)
 			return true;
-
+		
 		if (o == null || !(o instanceof Individual))
 			return false;
-
+		
 		return getId().getProjectId() == ((VariantRunData)o).getId().getProjectId() && getId().getRunName().equals(((VariantRunData)o).getId().getRunName()) && getId().getVariantId() == ((VariantRunData)o).getId().getVariantId();
 	}
 }

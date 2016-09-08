@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongo.maintypes;
@@ -45,30 +45,31 @@ import org.springframework.data.mongodb.core.mapping.Field;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class DBVCFHeader.
  */
 @Document(collection = "vcf_header")
 @TypeAlias("VH")
 public class DBVCFHeader
-{
-
+{	
+	
 	/**
 	 * The Class VcfHeaderId.
 	 */
 	static public class VcfHeaderId implements java.io.Serializable
 	{
-
+		
 		/** The Constant FIELDNAME_PROJECT. */
 		public final static String FIELDNAME_PROJECT = "pj";
-
+		
 		/** The Constant FIELDNAME_RUN. */
 		public final static String FIELDNAME_RUN = "rn";
 
 		/** The project. */
 		@Field(FIELDNAME_PROJECT)
 		private Integer project;
-
+		
 		/** The run. */
 		@Field(FIELDNAME_RUN)
 		private String run;
@@ -90,41 +91,41 @@ public class DBVCFHeader
 			this.run = run;
 		}
 	}
-
+	
 	/** The id. */
 	private VcfHeaderId id;
-
+	
 	/** The write command line. */
 	private boolean writeCommandLine;
-
+	
 	/** The write engine headers. */
-	private boolean writeEngineHeaders;
-
+	private boolean writeEngineHeaders; 
+	
 	/** The m info meta data. */
 	private Map<String, VCFInfoHeaderLine> mInfoMetaData = new LinkedHashMap();
-
+	
 	/** The m format meta data. */
 	private Map<String, VCFFormatHeaderLine> mFormatMetaData = new LinkedHashMap();
-
+	
 	/** The m filter meta data. */
 	private Map<String, VCFFilterHeaderLine> mFilterMetaData = new LinkedHashMap();
-
+	
 	/** The m other meta data. */
 	private Map<String, VCFHeaderLine> mOtherMetaData = new LinkedHashMap();
-
+	
 	/** The m meta data. */
 	private Map<String, VCFSimpleHeaderLine> mMetaData = new LinkedHashMap();
 
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(DBVCFHeader.class);
-
+	
 	/**
 	 * Instantiates a new DBVCF header.
 	 */
 	public DBVCFHeader()
 	{
 	}
-
+	
 	/**
 	 * Instantiates a new DBVCF header.
 	 *
@@ -161,7 +162,7 @@ public class DBVCFHeader
 		this.id = id;
 		this.writeCommandLine = header.isWriteCommandLine();
 		this.writeEngineHeaders = header.isWriteEngineHeaders();
-
+		
 		for (VCFHeaderLine line : header.getMetaDataInInputOrder())
 		{
 			if (VCFHeaderLine.class.equals(line.getClass()))
@@ -176,7 +177,7 @@ public class DBVCFHeader
 				mMetaData.put(((VCFSimpleHeaderLine) line).getKey(), (VCFSimpleHeaderLine) line);
 		}
 	}
-
+	
 	/**
 	 * Gets the id.
 	 *
@@ -185,7 +186,7 @@ public class DBVCFHeader
 	public VcfHeaderId getId() {
 		return id;
 	}
-
+	
 	/**
 	 * Sets the id.
 	 *
@@ -193,8 +194,8 @@ public class DBVCFHeader
 	 */
 	public void setId(VcfHeaderId id) {
 		this.id = id;
-	}
-
+	}	
+	
 	/**
 	 * Gets the write command line.
 	 *
@@ -339,10 +340,10 @@ public class DBVCFHeader
 			headerLines.add(mOtherMetaData.get(key));
 		for (String key : mMetaData.keySet())
 			headerLines.add(mMetaData.get(key));
-
+		
 		return headerLines;
 	}
-
+		
 	/**
 	 * From db object.
 	 *
@@ -414,7 +415,7 @@ public class DBVCFHeader
 		}
 		return header;
 	}
-
+	
 //	static public VCFHeaderLineCount getCount(BasicDBObject vcfCompoundHeaderLine) throws Exception
 //	{
 //		VCFHeaderLineCount countType = VCFHeaderLineCount.valueOf(vcfCompoundHeaderLine.getString("countType"));

@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
  *
- * See <http://www.gnu.org/licenses/gpl-3.0.html> for details about
+ * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongo.subtypes;
@@ -19,18 +19,19 @@ package fr.cirad.mgdb.model.mongo.subtypes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+// TODO: Auto-generated Javadoc
 /**
  * The Class ReferencePosition.
  */
 public class ReferencePosition
 {
-
+	
 	/** The Constant FIELDNAME_SEQUENCE. */
 	public final static String FIELDNAME_SEQUENCE = "ch";
-
+	
 	/** The Constant FIELDNAME_START_SITE. */
 	public final static String FIELDNAME_START_SITE = "ss";
-
+	
 	/** The Constant FIELDNAME_END_SITE. */
 	public final static String FIELDNAME_END_SITE = "es";
 
@@ -38,23 +39,23 @@ public class ReferencePosition
 	@Indexed
 	@Field(FIELDNAME_SEQUENCE)
 	private String sequence;
-
+	
 	/** The start site. */
 	@Indexed()
 	@Field(FIELDNAME_START_SITE)
 	private long startSite;
-
+	
 	/** The end site. */
 	@Field(FIELDNAME_END_SITE)
 	private Long endSite = null;
-
+	
 	/**
 	 * Instantiates a new reference position.
 	 */
 	private ReferencePosition()
-	{
+	{		
 	}
-
+	
 	/**
 	 * Instantiates a new reference position.
 	 *
@@ -66,7 +67,7 @@ public class ReferencePosition
 		this.sequence = sequence;
 		this.startSite = startSite;
 	}
-
+	
 	/**
 	 * Instantiates a new reference position.
 	 *
@@ -79,7 +80,7 @@ public class ReferencePosition
 		if (endSite != startSite)
 			this.endSite = endSite;
 	}
-
+	
 	/**
 	 * Gets the sequence.
 	 *
@@ -133,19 +134,19 @@ public class ReferencePosition
 	public void setEndSite(Long endSite) {
 		this.endSite = endSite;
 	}
-
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
 	@Override
-	public boolean equals(Object o)
+	public boolean equals(Object o) 
 	{
 		if (this == o)
 			return true;
-
+		
 		if (o == null || !(o instanceof ReferencePosition))
 			return false;
-
+		
 		boolean f1 = ((ReferencePosition)o).getSequence() == getSequence() || (getSequence() != null && getSequence().equals(((ReferencePosition)o).getSequence()));
 		boolean f2 = ((ReferencePosition)o).getStartSite() == getStartSite();
 		boolean f3 = ((ReferencePosition)o).getEndSite() == getEndSite() || (getEndSite() != null && getEndSite().equals(((ReferencePosition)o).getEndSite()));
