@@ -330,15 +330,15 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 				condComparisonList.add("");
 				condComparisonList.add("$" + pathToGT);
                 
-                project.put(fMultiRunProject ? pathToGT.replaceAll("\\.", "&curren;") : pathToGT, conditionsWhereGtIsAssimilatedToMissing.size() == 0 ? 1 : new BasicDBObject("$cond", condComparisonList));
+                project.put(fMultiRunProject ? pathToGT.replaceAll("\\.", "¤") : pathToGT, conditionsWhereGtIsAssimilatedToMissing.size() == 0 ? 1 : new BasicDBObject("$cond", condComparisonList));
             }
         
-		String separator = fMultiRunProject ? "&curren;" : ".";
+		String separator = fMultiRunProject ? "¤" : ".";
         if (fNeedProjectStage)
         {	// we will need to use the $project stage, either to return specific fields (not simply counting but actually getting records), or because we need to compute new fields on the fly for specific filters
 			for (String field : fieldsToReturn)
 				if (field != null && field.length() > 0)
-					project.put(field.replaceAll("\\.", "&curren;"), "$" + field);	        
+					project.put(field.replaceAll("\\.", "¤"), "$" + field);	        
         }
         
     	// Group records by variant id
@@ -350,7 +350,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 			for (Integer individualSample : individualIndexToSampleListMap.get(j))
 	    	{
 				String pathToGT = VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + individualSample + "." + SampleGenotype.FIELDNAME_GENOTYPECODE;
-				groupFields.put(pathToGT.replaceAll("\\.", "&curren;"), new BasicDBObject("$addToSet", "$" + pathToGT));
+				groupFields.put(pathToGT.replaceAll("\\.", "¤"), new BasicDBObject("$addToSet", "$" + pathToGT));
 				
     			// Check uniformity between genotypes related to a same individual
 				if (firstSample == null)
@@ -358,7 +358,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 				else
 				{
 					DBObject comparisonDBObject = new BasicDBObject();
-					comparisonDBObject.put("$eq", new String[] {"$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + separator + firstSample + separator + SampleGenotype.FIELDNAME_GENOTYPECODE, "$" + pathToGT.replaceAll("\\.", "�")});
+					comparisonDBObject.put("$eq", new String[] {"$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + separator + firstSample + separator + SampleGenotype.FIELDNAME_GENOTYPECODE, "$" + pathToGT.replaceAll("\\.", "¤")});
 					uniformityList.add(comparisonDBObject);
 				}
 	    	}
