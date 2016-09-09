@@ -130,7 +130,6 @@ public class VcfImport {
      * @param sTechnology the technology
      * @param mainFilePath the main file path
      * @param importMode the import mode
-     * @param testMode
      * @throws Exception the exception
      */
     public void importToMongo(boolean fIsBCF, String sModule, String sProject, String sRun, String sTechnology, String mainFilePath, int importMode) throws Exception {
@@ -268,8 +267,6 @@ public class VcfImport {
 
             // loop over each variation
             long count = 0;
-            // loop in listId for test mode
-            int idIteration = 0;
             int nNumberOfVariantsToSaveAtOnce = 1;
             ArrayList<VariantData> unsavedVariants = new ArrayList<VariantData>();
             ArrayList<VariantRunData> unsavedRuns = new ArrayList<VariantRunData>();
