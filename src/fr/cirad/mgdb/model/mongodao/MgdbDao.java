@@ -34,10 +34,10 @@ import com.mongodb.DBCollection;
 
 import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
+import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData;
+import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData.VariantRunDataId;
 import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
-import fr.cirad.mgdb.model.mongo.subtypes.VariantRunData;
-import fr.cirad.mgdb.model.mongo.subtypes.VariantRunData.VariantRunDataId;
 import fr.cirad.tools.Helper;
 
 // TODO: Auto-generated Javadoc

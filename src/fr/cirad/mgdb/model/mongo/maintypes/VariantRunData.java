@@ -14,7 +14,7 @@
  * See <http://www.gnu.org/licenses/agpl.html> for details about
  * GNU Affero General Public License V3.
  *******************************************************************************/
-package fr.cirad.mgdb.model.mongo.subtypes;
+package fr.cirad.mgdb.model.mongo.maintypes;
 
 import java.util.HashMap;
 
@@ -25,7 +25,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import fr.cirad.mgdb.model.mongo.maintypes.Individual;
+import fr.cirad.mgdb.model.mongo.subtypes.SampleGenotype;
 
 // TODO: Auto-generated Javadoc
 /**

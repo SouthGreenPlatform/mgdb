@@ -19,11 +19,17 @@ package fr.cirad.mgdb.importing;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+//import java.io.FileWriter;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+//import java.util.HashMap;
+//import java.util.HashSet;
 import java.util.List;
+//import java.util.Scanner;
 import java.util.TreeSet;
 
+//import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.context.support.GenericXmlApplicationContext;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -58,6 +64,36 @@ public class InitialVariantImport {
 	 */
 	public static void main(String[] args) throws Exception
 	{
+		/* Insert chip list from external file */
+//		HashMap<String, HashSet<String>> illuminaIdToChipMap = new HashMap<String, HashSet<String>>();
+//		Scanner sc = new Scanner(new File("/media/sempere/Seagate Expansion Drive/D/data/intertryp/SNPchimp_exhaustive_with_rs.tsv"));
+//		sc.nextLine();
+//		while (sc.hasNextLine())
+//		{
+//			String[] splittedLine = sc.nextLine().split("\t");
+//			HashSet<String> chipsForId = illuminaIdToChipMap.get(splittedLine[4]);
+//			if (chipsForId == null)
+//			{
+//				chipsForId = new HashSet<String>();
+//				illuminaIdToChipMap.put(splittedLine[4], chipsForId);
+//			}
+//			chipsForId.add(splittedLine[0]);
+//		}
+//		
+//		sc.close();
+//		sc = new Scanner(new File("/media/sempere/Seagate Expansion Drive/D/data/intertryp/bos_ExhaustiveSnpList_StandardFormat.tsv"));
+//		FileWriter fw = new FileWriter("/media/sempere/Seagate Expansion Drive/D/data/intertryp/bos_ExhaustiveSnpList_StandardFormat_wChips.tsv");
+//		fw.write(sc.nextLine() + "\tchip\n");
+//		while (sc.hasNextLine())
+//		{
+//			String sLine = sc.nextLine();
+//			String[] splittedLine = sLine.split("\t");
+//			HashSet<String> chipsForId = illuminaIdToChipMap.get(splittedLine[2].split(";")[0]);
+//			fw.write(sLine + "\t" + StringUtils.join(chipsForId, ";") + "\n");
+//		}
+//		sc.close();
+//		fw.close();
+		
 		insertVariantsAndSynonyms(args);
 	}
 
@@ -70,7 +106,7 @@ public class InitialVariantImport {
 	public static void insertVariantsAndSynonyms(String[] args) throws Exception
 	{
 		if (args.length < 2)
-			throw new Exception("You must pass 2 parameters as arguments: DATASOURCE name, exhaustive variant list TSV file. This TSV file is expected to be formatted as follows: widde_id, chr:pos, colon-separated list of containing chips, zero or more colon-separated lists of synonyms (their type being defined in the header)");
+			throw new Exception("You must pass 2 parameters as arguments: DATASOURCE name, exhaustive variant list TSV file. This TSV file is expected to be formatted as follows: id, chr:pos, colon-separated list of containing chips, zero or more colon-separated lists of synonyms (their type being defined in the header)");
 
 		File chipInfoFile = new File(args[1]);
 		if (!chipInfoFile.exists() || chipInfoFile.isDirectory())
@@ -109,21 +145,21 @@ public class InitialVariantImport {
 				long count = 0;
 				int nNumberOfVariantsToSaveAtOnce = 20000;
 				ArrayList<VariantData> unsavedVariants = new ArrayList<VariantData>();
-				
+				List<String> fieldsExceptSynonyms = Arrays.asList(new String[] {"id", "type", "pos", "chip"}); 
 				do
 				{
 					if (sLine.length() > 0)
 					{
 						List<String> cells = Helper.split(sLine, "\t");
-						VariantData variant = new VariantData(cells.get(0));
-						variant.setType(cells.get(1));
-						String[] seqAndPos = cells.get(2).split(":");
+						VariantData variant = new VariantData(cells.get(header.indexOf("id")));
+						variant.setType(cells.get(header.indexOf("type")));
+						String[] seqAndPos = cells.get(header.indexOf("pos")).split(":");
 						if (!seqAndPos[0].equals("0"))
 							variant.setReferencePosition(new ReferencePosition(seqAndPos[0], Long.parseLong(seqAndPos[1])));
 						if (cells.size() == 3)
 							continue;
 						
-						String chipList = cells.get(3);
+						String chipList = cells.get(header.indexOf("chip"));
 						if (chipList.length() > 0)
 						{
 							List<String> analysisMethods = new ArrayList<String>();
@@ -132,8 +168,11 @@ public class InitialVariantImport {
 										variant.setAnalysisMethods(analysisMethods);
 						}
 
-						for (int i=3; i<header.size(); i++)
+						for (int i=0; i<header.size(); i++)
 						{
+							if (fieldsExceptSynonyms.contains(header.get(i)))
+								continue;
+
 							String syns = cells.get(i);
 							if (syns.length() > 0)
 							{
