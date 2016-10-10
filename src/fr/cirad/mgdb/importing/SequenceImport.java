@@ -4,8 +4,8 @@
  * Copyright (C) 2016 <CIRAD>
  *
  * This program is free software: you can redistribute it and/or modify it under
- * the terms of the GNU Affero General Public License, version 3 as published by the
- * Free Software Foundation.
+ * the terms of the GNU Affero General Public License, version 3 as published by
+ * the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
@@ -81,7 +81,7 @@ public class SequenceImport {
                 // OS independant filePath? 
                 String basePath = System.getProperty("user.home");
                 writeFile = new FileOutputStream(basePath + "/" + fileName);
-                // TODO compute checksum on whole file for integrity ? 
+
                 GZIPInputStream gis = new GZIPInputStream(input);
 
                 byte[] buffer = new byte[1024];
@@ -207,6 +207,42 @@ public class SequenceImport {
      */
     private static final Logger LOG = Logger.getLogger(SequenceImport.class);
 
+    public static void importSeq(MongoTemplate mongoTemplate, String[] args, String seqCollName) throws Exception {
+
+        List<String> listHeader = new ArrayList<>();
+        Map<String, String> seqInfo;
+
+        String fileName = args[1];
+
+        if (fileName.substring(0, 3).equals("ftp") | fileName.substring(0, 4).equals("http")) {
+
+            // import from an URL 
+            File file = SequenceImport.getFastaFileFromURL(fileName);
+            seqInfo = SequenceImport.getSeqInfo(file, listHeader);
+        } else {
+            // import from a local file 
+            seqInfo = SequenceImport.getSeqInfo(new File(fileName), listHeader);
+        }
+
+        LOG.info("Importing fasta file");
+        int rowIndex = 0;
+
+        for (Entry<String, String> entry : seqInfo.entrySet()) {
+
+            String sequenceId = listHeader.get(rowIndex);
+            // sequenceId looks like :  "10 dna:chromosome chromosome:GRCh38:10:1:133797422:1 REF"
+            // sequence name is 10 in this example
+            String name = sequenceId.split("\\s+")[0].replace(">", ""); // split on whitespace and delete '>' 
+
+            String checksum = entry.getKey();
+            String length = entry.getValue();
+            // do not store the sequence since we don't need it ? 
+            mongoTemplate.save(new Sequence(name, "", Long.valueOf(length), checksum, fileName), seqCollName);
+            LOG.info(length + " records added to collection " + seqCollName);
+            rowIndex++;
+        }
+    }
+
     /**
      * The main method.
      *
@@ -236,9 +272,7 @@ public class SequenceImport {
                 throw new Exception("DATASOURCE '" + sModule + "' is not supported!");
             }
         }
-
         String seqCollName = MongoTemplateManager.getMongoCollectionName(Sequence.class);
-
         if ("2".equals(args[2])) {	// empty project's sequence data before importing
             if (mongoTemplate.collectionExists(seqCollName)) {
                 mongoTemplate.dropCollection(seqCollName);
@@ -249,43 +283,8 @@ public class SequenceImport {
         } else {
             throw new Exception("3rd parameter only supports values '2' (empty all database's sequence data before importing), and '0' (only overwrite existing sequences)");
         }
+        importSeq(mongoTemplate, args, seqCollName);
 
-        List<String> listHeader = new ArrayList<>();
-        Map<String, String> seqInfo;
-
-        String fileName = args[1];
-        if (fileName.substring(0, 3).equals("ftp") | fileName.substring(0, 4).equals("http")) {
-
-            // import from an URL 
-            File file = SequenceImport.getFastaFileFromURL(fileName);
-            seqInfo = SequenceImport.getSeqInfo(file, listHeader);
-        } else {
-            // import from a local file 
-            seqInfo = SequenceImport.getSeqInfo(new File(fileName), listHeader);
-        }
-
-        LOG.info("Importing fasta file");
-        int rowIndex = 0;
-
-        for (Entry<String, String> entry : seqInfo.entrySet()) {
-
-            String sequenceId = listHeader.get(rowIndex);
-            // sequenceId looks like :  "10 dna:chromosome chromosome:GRCh38:10:1:133797422:1 REF"
-            // sequence name is 10 in this example
-            String name = sequenceId.split("\\s+")[0].replace(">", ""); // split on whitespace and delete '>' 
-
-            String checksum = entry.getKey();
-            String length = entry.getValue();
-            // do not store the sequence since we don't need it ? 
-            mongoTemplate.save(new Sequence(name, "", Long.valueOf(length), checksum, fileName), seqCollName);
-            LOG.info(length + " records added to collection " + seqCollName);
-            rowIndex++;
-            if (rowIndex % 1000 == 0) {
-                LOG.info(rowIndex + " ");
-            }
-        }
-
-        // TODO drop fasta file ? 
         if (ctx != null) {
             ctx.close();
         }
