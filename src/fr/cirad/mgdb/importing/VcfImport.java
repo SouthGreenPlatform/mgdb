@@ -32,6 +32,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -47,6 +48,7 @@ import org.springframework.data.mongodb.core.query.Query;
 
 import com.mongodb.WriteResult;
 
+import fr.cirad.mgdb.importing.base.AbstractGenotypeImport;
 import fr.cirad.mgdb.model.mongo.maintypes.AutoIncrementCounter;
 import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader;
 import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader.VcfHeaderId;
@@ -67,7 +69,7 @@ import fr.cirad.tools.mongo.MongoTemplateManager;
 /**
  * The Class VcfImport.
  */
-public class VcfImport {
+public class VcfImport extends AbstractGenotypeImport {
 
     /**
      * The Constant LOG.
@@ -118,7 +120,7 @@ public class VcfImport {
             LOG.warn("Unable to parse input mode. Using default (0): overwrite run if exists.");
         }
         new VcfImport().importToMongo(args[4].toLowerCase().endsWith(".bcf"), args[0], args[1], args[2], args[3], args[4], mode);        
-        }
+    }
 
     /**
      * Import to mongo.
@@ -246,17 +248,31 @@ public class VcfImport {
             progress.moveToNextStep();
 
             HashMap<String, Comparable> existingVariantIDs = new HashMap<String, Comparable>();
-            if (mongoTemplate.count(null, VariantData.class) > 0) {	// there are already variants in the database: build a list of all existing variants, finding them by ID is by far most efficient
+            if (mongoTemplate.count(null, VariantData.class) > 0)
+            {	// there are already variants in the database: build a list of all existing variants, finding them by ID is by far most efficient
                 long beforeReadingAllVariants = System.currentTimeMillis();
                 Query query = new Query();
                 query.fields().include("_id").include(VariantData.FIELDNAME_REFERENCE_POSITION).include(VariantData.FIELDNAME_TYPE);
                 Iterator<VariantData> variantIterator = mongoTemplate.find(query, VariantData.class).iterator();
-                while (variantIterator.hasNext()) {
-                    VariantData vd = variantIterator.next();
-                    ReferencePosition chrPos = vd.getReferencePosition();
-                    String variantDescForPos = vd.getType() + "::" + chrPos.getSequence() + "::" + chrPos.getStartSite();
-                    existingVariantIDs.put(variantDescForPos, vd.getId());
-                }
+    			while (variantIterator.hasNext())
+    			{
+    				VariantData vd = variantIterator.next();
+    				ReferencePosition chrPos = vd.getReferencePosition();
+//    				if (chrPos == null)
+//    				{	// no position data available
+//    					variantIterator = null;
+//    					LOG.warn("No position data available in existing variants");
+//    					continue;
+//    				}
+    				ArrayList<String> idAndSynonyms = new ArrayList<>();
+    				idAndSynonyms.add(vd.getId().toString());
+    				for (Collection<Comparable> syns : vd.getSynonyms().values())
+    					for (Comparable syn : syns)
+    						idAndSynonyms.add(syn.toString());
+
+    				for (String variantDescForPos : getIdentificationStrings(vd.getType(), chrPos == null ? null : chrPos.getSequence(), chrPos == null ? null : chrPos.getStartSite(), idAndSynonyms))
+    					existingVariantIDs.put(variantDescForPos, vd.getId());
+    			}
                 if (existingVariantIDs.size() > 0) {
                     info = existingVariantIDs.size() + " VariantData record IDs were scanned in " + (System.currentTimeMillis() - beforeReadingAllVariants) / 1000 + "s";
                     LOG.info(info);

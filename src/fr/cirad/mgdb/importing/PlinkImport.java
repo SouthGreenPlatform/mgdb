@@ -45,6 +45,7 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.WriteResult;
 import com.sun.org.apache.xpath.internal.functions.WrongNumberArgsException;
 
+import fr.cirad.mgdb.importing.base.AbstractGenotypeImport;
 import fr.cirad.mgdb.model.mongo.maintypes.AutoIncrementCounter;
 import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader;
 import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader.VcfHeaderId;
@@ -66,8 +67,8 @@ import fr.cirad.tools.mongo.MongoTemplateManager;
 /**
  * The Class PlinkImport.
  */
-public class PlinkImport {
-	
+public class PlinkImport extends AbstractGenotypeImport {
+
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(VariantData.class);
 	
@@ -122,24 +123,7 @@ public class PlinkImport {
 		{
 			LOG.warn("Unable to parse input mode. Using default (0): overwrite run if exists.");
 		}
-		//new PlinkImport().importToMongo(args[0], args[1], args[2], args[3], args[4], args[5], mode);
-	}
-	
-	private static ArrayList<String> getIdentificationStrings(String sType, String sSeq, Long nStartPos, Collection<String> idAndSynonyms) throws Exception
-	{
-		ArrayList<String> result = new ArrayList<String>();
-		
-		if (sSeq != null && nStartPos != null)
-			result.add( sType + "¤" + sSeq + "¤" + nStartPos);
-		
-		if (idAndSynonyms != null)
-			for (String name : idAndSynonyms)
-				result.add(name);
-		
-		if (result.size() == 0)
-			throw new Exception("Not enough info provided to build identification strings");
-		
-		return result;
+		new PlinkImport().importToMongo(args[0], args[1], args[2], args[3], args[4], args[5], mode);
 	}
 
 	/**
@@ -229,38 +213,40 @@ public class PlinkImport {
 				project.setTechnology(sTechnology);
 			}
 
-			long beforeReadingAllVariants = System.currentTimeMillis();
-			// First build a list of all variants that exist in the database: finding them by ID is by far most efficient
-			HashMap<String, Comparable> existingVariantIDs = new HashMap<String, Comparable>();
-			Query query = new Query();
-			query.fields().include("_id").include(VariantData.FIELDNAME_REFERENCE_POSITION).include(VariantData.FIELDNAME_TYPE).include(VariantData.FIELDNAME_SYNONYMS);
-			Iterator<VariantData> variantIterator = mongoTemplate.find(query, VariantData.class).iterator();
-			while (variantIterator.hasNext())
-			{
-				VariantData vd = variantIterator.next();
-				ReferencePosition chrPos = vd.getReferencePosition();
-				if (chrPos == null)
-				{	// no position data available
-					variantIterator = null;
-					LOG.warn("No position data available in existing variants");
-					break;
+            HashMap<String, Comparable> existingVariantIDs = new HashMap<String, Comparable>();
+            if (mongoTemplate.count(null, VariantData.class) > 0)
+            {	// there are already variants in the database: build a list of all existing variants, finding them by ID is by far most efficient
+                long beforeReadingAllVariants = System.currentTimeMillis();
+                Query query = new Query();
+				query.fields().include("_id").include(VariantData.FIELDNAME_REFERENCE_POSITION).include(VariantData.FIELDNAME_TYPE).include(VariantData.FIELDNAME_SYNONYMS);
+				Iterator<VariantData> variantIterator = mongoTemplate.find(query, VariantData.class).iterator();
+				while (variantIterator.hasNext())
+				{
+					VariantData vd = variantIterator.next();
+					ReferencePosition chrPos = vd.getReferencePosition();
+	//				if (chrPos == null)
+	//				{	// no position data available
+	//					variantIterator = null;
+	//					LOG.warn("No position data available in existing variants");
+	//					continue;
+	//				}
+					ArrayList<String> idAndSynonyms = new ArrayList<>();
+					idAndSynonyms.add(vd.getId().toString());
+					for (Collection<Comparable> syns : vd.getSynonyms().values())
+						for (Comparable syn : syns)
+							idAndSynonyms.add(syn.toString());
+	
+					for (String variantDescForPos : getIdentificationStrings(vd.getType(), chrPos == null ? null : chrPos.getSequence(), chrPos == null ? null : chrPos.getStartSite(), idAndSynonyms))
+						existingVariantIDs.put(variantDescForPos, vd.getId());
 				}
-				ArrayList<String> idAndSynonyms = new ArrayList<>();
-				idAndSynonyms.add(vd.getId().toString());
-				for (Collection<Comparable> syns : vd.getSynonyms().values())
-					for (Comparable syn : syns)
-						idAndSynonyms.add(syn.toString());
-				
-				for (String variantDescForPos : getIdentificationStrings(vd.getType(), chrPos.getSequence(), chrPos.getStartSite(), idAndSynonyms))
-					existingVariantIDs.put(variantDescForPos, vd.getId());
-			}
-			if (existingVariantIDs.size() > 0)
-			{
-				String info = mongoTemplate.count(null, VariantData.class) + " VariantData record IDs were scanned in " + (System.currentTimeMillis() - beforeReadingAllVariants) / 1000 + "s";
-				LOG.info(info);
-				progress.addStep(info);
-				progress.moveToNextStep();
-			}
+				if (existingVariantIDs.size() > 0)
+				{
+					String info = mongoTemplate.count(null, VariantData.class) + " VariantData record IDs were scanned in " + (System.currentTimeMillis() - beforeReadingAllVariants) / 1000 + "s";
+					LOG.info(info);
+					progress.addStep(info);
+					progress.moveToNextStep();
+				}
+            }
 			
 			if (!project.getVariantTypes().contains(Type.SNP.toString()))
 				project.getVariantTypes().add(Type.SNP.toString());
@@ -308,6 +294,12 @@ public class PlinkImport {
 					{
 						StringTokenizer variantFields = new StringTokenizer(scanner.nextLine(), "\t");
 						String providedVariantId = variantFields.nextToken();
+						if (providedVariantId.toString().startsWith("*"))
+						{
+							System.err.print("\r\nSkipping deprecated variant data: " + providedVariantId);
+							continue;
+						}
+
 						String[] seqAndPos = variantsAndPositions.get(providedVariantId).split("\t");
 						String sequence = seqAndPos[0];
 						Long bpPosition = Long.parseLong(seqAndPos[1]);
@@ -323,69 +315,75 @@ public class PlinkImport {
 							if (variantId != null)
 								break;
 						}
-
-						VariantData variant = mongoTemplate.findById(variantId == null ? providedVariantId : variantId, VariantData.class);
-						if (variant == null)
-							variant = new VariantData(providedVariantId);
-						unsavedVariants.add(variant);
-
-						String[][] alleles = new String[2][individuals.length];
-						int nIndividualIndex = 0;
-						while (nIndividualIndex < alleles[0].length)
-						{
-							String genotype = variantFields.nextToken();
-							alleles[0][nIndividualIndex] = genotype.substring(0, 1);
-							alleles[1][nIndividualIndex++] = genotype.substring(1, 2);
-						}
-
-						VariantRunData runToSave = addPlinkDataToVariant(mongoTemplate, variant, sequence, bpPosition, userIndividualToPopulationMapToFill, alleles, project, sRun, previouslyCreatedSamples);
-						if (!unsavedRuns.contains(runToSave))
-							unsavedRuns.add(runToSave);
 						
-						if (count == 0)
+						if (variantId == null)
 						{
-							nNumberOfVariantsToSaveAtOnce = Math.max(1, 30000 / individuals.length);
-							LOG.info("Importing by chunks of size " + nNumberOfVariantsToSaveAtOnce);
+							LOG.warn("Unknown variant: " + providedVariantId);
 						}
-						if (count % nNumberOfVariantsToSaveAtOnce == 0)
+						else
 						{
-							if (variantIterator != null && existingVariantIDs.size() == 0)
-							{	// we benefit from the fact that it's the first variant import into this database to use bulk insert which is meant to be faster
-								mongoTemplate.insert(unsavedVariants, VariantData.class);
-								mongoTemplate.insert(unsavedRuns, VariantRunData.class);
-							}
-							else
+							VariantData variant = mongoTemplate.findById(variantId == null ? providedVariantId : variantId, VariantData.class);
+							if (variant == null)
+								variant = new VariantData(providedVariantId);
+							unsavedVariants.add(variant);
+	
+							String[][] alleles = new String[2][individuals.length];
+							int nIndividualIndex = 0;
+							while (nIndividualIndex < alleles[0].length)
 							{
-								for (VariantData vd : unsavedVariants)
-									mongoTemplate.save(vd);
-								for (VariantRunData run : unsavedRuns)
-									mongoTemplate.save(run);
+								String genotype = variantFields.nextToken();
+								alleles[0][nIndividualIndex] = genotype.substring(0, 1);
+								alleles[1][nIndividualIndex++] = genotype.substring(1, 2);
 							}
-							unsavedVariants.clear();
-							unsavedRuns.clear();
-		
-							long nProgressPercentage = count * 100 / variants.length;
-							if (nPreviousProgressPercentage != nProgressPercentage)
+	
+							VariantRunData runToSave = addPlinkDataToVariant(mongoTemplate, variant, sequence, bpPosition, userIndividualToPopulationMapToFill, alleles, project, sRun, previouslyCreatedSamples);
+							if (!unsavedRuns.contains(runToSave))
+								unsavedRuns.add(runToSave);
+							
+							if (count == 0)
 							{
-								progress.setCurrentStepProgress(nProgressPercentage);
-								if (count > 0 && (count % (10 * nNumberOfVariantsToSaveAtOnce) == 0))
-								{
-									info = count + " lines processed (" + nProgressPercentage + "%)"/*"(" + (System.currentTimeMillis() - before) / 1000 + ")\t"*/;
-									LOG.debug(info);
+								nNumberOfVariantsToSaveAtOnce = Math.max(1, 30000 / individuals.length);
+								LOG.info("Importing by chunks of size " + nNumberOfVariantsToSaveAtOnce);
+							}
+							if (count % nNumberOfVariantsToSaveAtOnce == 0)
+							{
+								if (existingVariantIDs.size() == 0)
+								{	// we benefit from the fact that it's the first variant import into this database to use bulk insert which is meant to be faster
+									mongoTemplate.insert(unsavedVariants, VariantData.class);
+									mongoTemplate.insert(unsavedRuns, VariantRunData.class);
 								}
-								nPreviousProgressPercentage = nProgressPercentage;
+								else
+								{
+									for (VariantData vd : unsavedVariants)
+										mongoTemplate.save(vd);
+									for (VariantRunData run : unsavedRuns)
+										mongoTemplate.save(run);
+								}
+								unsavedVariants.clear();
+								unsavedRuns.clear();
+			
+								long nProgressPercentage = count * 100 / variants.length;
+								if (nPreviousProgressPercentage != nProgressPercentage)
+								{
+									progress.setCurrentStepProgress(nProgressPercentage);
+									if (count > 0 && (count % (10 * nNumberOfVariantsToSaveAtOnce) == 0))
+									{
+										info = count + " lines processed (" + nProgressPercentage + "%)"/*"(" + (System.currentTimeMillis() - before) / 1000 + ")\t"*/;
+										LOG.debug(info);
+									}
+									nPreviousProgressPercentage = nProgressPercentage;
+								}
 							}
+			
+							int ploidy = 2;	// the only one supported by PLINK format 
+							if (project.getPloidyLevel() < ploidy)
+								project.setPloidyLevel(ploidy);
+	
+							if (variant.getReferencePosition() != null && !project.getSequences().contains(variant.getReferencePosition().getSequence()))
+								project.getSequences().add(variant.getReferencePosition().getSequence());
+	
+							project.getAlleleCounts().add(variant.getKnownAlleleList().size());	// it's a TreeSet so it will only be added if it's not already present
 						}
-		
-						int ploidy = 2;	// the only one supported by PLINK format 
-						if (project.getPloidyLevel() < ploidy)
-							project.setPloidyLevel(ploidy);
-
-						if (variant.getReferencePosition() != null && !project.getSequences().contains(variant.getReferencePosition().getSequence()))
-							project.getSequences().add(variant.getReferencePosition().getSequence());
-
-						project.getAlleleCounts().add(variant.getKnownAlleleList().size());	// it's a TreeSet so it will only be added if it's not already present
-
 						count++;
 					}
 					scanner.close();
@@ -399,7 +397,7 @@ public class PlinkImport {
 						f.delete();
 			}
 
-			if (variantIterator != null && existingVariantIDs.size() == 0)
+			if (existingVariantIDs.size() == 0)
 			{	// we benefit from the fact that it's the first variant import into this database to use bulk insert which is meant to be faster
 				mongoTemplate.insert(unsavedVariants, VariantData.class);
 				mongoTemplate.insert(unsavedRuns, VariantRunData.class);
