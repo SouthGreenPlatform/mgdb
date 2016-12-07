@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.commons.math.util.MathUtils;
 import org.apache.log4j.Logger;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -117,8 +118,10 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	/** The n total variant count. */
 	private long nTotalVariantCount = 0;
 	
-	/** The n n variants queried at once. */
+	/** The n variants queried at once. */
 	private int nNVariantsQueriedAtOnce = 0;	/* will remain so if we are working on the full dataset */
+	
+	private int nNextCallCount = 0;
 	
 	/** The current tagged variant. */
 	private Comparable currentTaggedVariant = null;
@@ -220,6 +223,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	@Override
 	public List<DBObject> next()
 	{
+		nNextCallCount++;
 		boolean fZygosityRegex = false;
 		boolean fIsRealisticGenotypeQuery = false;
 		boolean fNegateMatch = false;
@@ -246,9 +250,25 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 				cleanOperator = cleanOperator.substring(0, cleanOperator.length() - AGGREGATION_QUERY_WITHOUT_ABNORMAL_HETEROZYGOSITY.length());
 			}
 		}
-		        
+				        
 		List<DBObject> pipeline = new ArrayList<DBObject>();
 		BasicDBList initialMatchList = new BasicDBList();
+		pipeline.add(new BasicDBObject("$match", new BasicDBObject("$and", initialMatchList)));
+
+		if ("$ne".equals(cleanOperator) && !fNegateMatch)
+        {
+	        int nMaxNumberOfAllelesForOneVariant = genotypingProject.getAlleleCounts().last(), nPloidy = genotypingProject.getPloidyLevel();
+	        int nNumberOfPossibleGenotypes = (int) (nMaxNumberOfAllelesForOneVariant + MathUtils.factorial(nMaxNumberOfAllelesForOneVariant)/(MathUtils.factorial(nPloidy)*MathUtils.factorial(nMaxNumberOfAllelesForOneVariant-nPloidy)) + 1 /*missing data*/);
+	        if (selectedIndividuals.size() > nNumberOfPossibleGenotypes)
+	        {
+	        	initialMatchList.add(new BasicDBObject("_id", null));
+	        	if (nNextCallCount == 1)
+		        	LOG.warn("Skipping 'all different' filter (more individuals than possible genotypes)");
+//	        	variantCursor.next();
+	        	return pipeline;
+	        }
+        }
+		
         if (mongoTemplate.count(null, GenotypingProject.class) != 1)
 			initialMatchList.add(new BasicDBObject("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID, genotypingProject.getId()));
     	
@@ -291,11 +311,9 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 					geneNameDBO = new BasicDBObject("$in", MgdbDao.split(geneNames, ","));
 				initialMatchList.add(new BasicDBObject(VariantRunData.SECTION_ADDITIONAL_INFO + "." + VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_GENE, geneNameDBO));
 			}
-			if (variantEffects.length() > 0){
+			if (variantEffects.length() > 0)
 				initialMatchList.add(new BasicDBObject(VariantRunData.SECTION_ADDITIONAL_INFO + "." + VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME, new BasicDBObject("$in", MgdbDao.split(variantEffects, ","))));
-                        }
-                }
-		pipeline.add(new BasicDBObject("$match", new BasicDBObject("$and", initialMatchList)));
+        }
 		
         boolean fMultiRunProject = genotypingProject.getRuns().size() > 1;
         boolean fNeedProjectStage = fMultiRunProject || fieldsToReturn.size() > 0 || (genotypeQualityThreshold != null && genotypeQualityThreshold > 1) || (readDepthThreshold != null && readDepthThreshold > 1) || (cleanOperator != null && !fZygosityRegex);
@@ -483,26 +501,43 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
                     genotypeMatchList.add(new BasicDBObject("$or", orList));
                 }
 				else
-				{	// Query to compare at genotypes of individuals (All same, All different, Not all same, Not all different)
+				{	// Query to compare genotypes of individuals (All same, All different, Not all same, Not all different)
 			        ArrayList<DBObject> comparisonList = new ArrayList<DBObject>();
-
-					for (int i=0; i<selectedIndividuals.size(); i++)
-						for (Integer firstIndividualSample : individualIndexToSampleListMap.get(i))
-							for (int j=("$eq".equals(cleanOperator) ? (selectedIndividuals.size()-1) : (i+1)); j<selectedIndividuals.size(); j++)
-								for (Integer secondIndividualSample : individualIndexToSampleListMap.get(j))
-									if (i != j)
-									{	/* do we need to make sure each genotype actually exists?!? */
-										String pathToGT = VariantRunData.FIELDNAME_SAMPLEGENOTYPES + separator + secondIndividualSample + separator + SampleGenotype.FIELDNAME_GENOTYPECODE;
-										DBObject comparisonDBObject = new BasicDBObject();
-										comparisonDBObject.put(cleanOperator, new String[] {"$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + separator + firstIndividualSample + separator + SampleGenotype.FIELDNAME_GENOTYPECODE, "$" + pathToGT});
-										project.put("c" + i + "_" + j, comparisonDBObject);
-										BasicDBObject dbo = new BasicDBObject("c" + i + "_" + j, fNegateMatch ? false : true);
-										if (!comparisonList.contains(dbo))
-											comparisonList.add(dbo);
-									}
-					genotypeMatchList.add(new BasicDBObject(fNegateMatch ? "$or" : "$and", comparisonList));
+			        
+			        boolean fSkipThisFilter = false;
+			        if ("$ne".equals(cleanOperator) && fNegateMatch)
+			        {
+				        int nMaxNumberOfAllelesForOneVariant = genotypingProject.getAlleleCounts().last(), nPloidy = genotypingProject.getPloidyLevel();
+				        int nNumberOfPossibleGenotypes = (int) (nMaxNumberOfAllelesForOneVariant + MathUtils.factorial(nMaxNumberOfAllelesForOneVariant)/(MathUtils.factorial(nPloidy)*MathUtils.factorial(nMaxNumberOfAllelesForOneVariant-nPloidy)) + 1 /*missing data*/);
+				        if (selectedIndividuals.size() > nNumberOfPossibleGenotypes)
+				        {
+				        	fSkipThisFilter = true;
+				        	if (nNextCallCount == 1)
+					        	LOG.warn("Skipping 'not all different' filter (more individuals than possible genotypes)");
+				        }
+			        }
+			        
+			        if (!fSkipThisFilter)
+			        {
+						for (int i=0; i<selectedIndividuals.size(); i++)
+							for (Integer firstIndividualSample : individualIndexToSampleListMap.get(i))
+								for (int j=("$eq".equals(cleanOperator) ? (selectedIndividuals.size()-1) : (i+1)); j<selectedIndividuals.size(); j++)
+									for (Integer secondIndividualSample : individualIndexToSampleListMap.get(j))
+										if (i != j)
+										{	/* do we need to make sure each genotype actually exists?!? */
+											String pathToGT = VariantRunData.FIELDNAME_SAMPLEGENOTYPES + separator + secondIndividualSample + separator + SampleGenotype.FIELDNAME_GENOTYPECODE;
+											DBObject comparisonDBObject = new BasicDBObject();
+											comparisonDBObject.put(cleanOperator, new String[] {"$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + separator + firstIndividualSample + separator + SampleGenotype.FIELDNAME_GENOTYPECODE, "$" + pathToGT});
+											project.put("c" + i + "_" + j, comparisonDBObject);
+											BasicDBObject dbo = new BasicDBObject("c" + i + "_" + j, fNegateMatch ? false : true);
+											if (!comparisonList.contains(dbo))
+												comparisonList.add(dbo);
+										}
+						genotypeMatchList.add(new BasicDBObject(fNegateMatch ? "$or" : "$and", comparisonList));
+			        }
 				}
-				pipeline.add(new BasicDBObject("$match", new BasicDBObject("$and", genotypeMatchList)));
+				if (genotypeMatchList.size() > 0)
+					pipeline.add(new BasicDBObject("$match", new BasicDBObject("$and", genotypeMatchList)));
             }
         }
 
