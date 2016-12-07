@@ -620,5 +620,16 @@ public class VariantData
 		VariantContext vc = vcb.make();
 		return vc;
 	}
-               
+	
+    @Override
+	public boolean equals(Object o)
+	{
+		if (this == o)
+			return true;
+		
+		if (o == null || !(o instanceof VariantData))
+			return false;
+		
+		return getId().equals(((VariantData)o).getId());
+	}
 }

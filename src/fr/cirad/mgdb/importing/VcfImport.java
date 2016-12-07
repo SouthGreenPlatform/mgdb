@@ -203,9 +203,8 @@ public class VcfImport extends AbstractGenotypeImport {
                     LOG.info(wr.getN() + " records removed from variantRunData");
                     wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);	// we are going to re-write it
                 }
-                if (mongoTemplate.count(null, VariantRunData.class) == 0) {
-                    mongoTemplate.getDb().dropDatabase(); // if there is no genotyping data then any other data is irrelevant
-                }
+//                if (mongoTemplate.count(null, VariantRunData.class) == 0)
+//                    mongoTemplate.getDb().dropDatabase(); // if there is no genotyping data then any other data is irrelevant
             }
 
             VCFHeader header = (VCFHeader) reader.getHeader();

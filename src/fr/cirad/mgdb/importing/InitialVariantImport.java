@@ -156,8 +156,6 @@ public class InitialVariantImport {
 						String[] seqAndPos = cells.get(header.indexOf("pos")).split(":");
 						if (!seqAndPos[0].equals("0"))
 							variant.setReferencePosition(new ReferencePosition(seqAndPos[0], Long.parseLong(seqAndPos[1])));
-						if (cells.size() == 3)
-							continue;
 						
 						String chipList = cells.get(header.indexOf("chip"));
 						if (chipList.length() > 0)
@@ -178,7 +176,8 @@ public class InitialVariantImport {
 							{
 								TreeSet<Comparable> synSet = new TreeSet<Comparable>();
 								for (String syn : syns.split(";"))
-									synSet.add(syn);
+									if (!syn.equals("."))
+										synSet.add(syn);
 								variant.getSynonyms().put(header.get(i), synSet);
 							}
 						}
