@@ -37,6 +37,7 @@ import java.util.ResourceBundle;
 import java.util.ResourceBundle.Control;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import javax.annotation.PreDestroy;
 
@@ -87,7 +88,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
     /**
      * The public databases.
      */
-    static private List<String> publicDatabases = new ArrayList<>();
+    static private Set<String> publicDatabases = new TreeSet<>();
 
     /**
      * The hidden databases.
@@ -405,7 +406,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
      *
      * @return the public database names
      */
-    static public List<String> getPublicDatabases() {
+    static public Collection<String> getPublicDatabases() {
         return publicDatabases;
     }
 
