@@ -16,6 +16,7 @@
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongodao;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -169,7 +170,7 @@ public class MgdbDao extends Helper
 		for (String returnedField : variantFieldsToReturn)
 			variantQuery.fields().include(returnedField);
 		
-		LinkedHashMap<Comparable, VariantData> variantIdToVariantMap = new LinkedHashMap<Comparable, VariantData>();		
+		HashMap<Comparable, VariantData> variantIdToVariantMap = new HashMap<Comparable, VariantData>();		
 		List<VariantData> variants = mongoTemplate.find(variantQuery, VariantData.class);
 		for (VariantData vd : variants)
 			variantIdToVariantMap.put(vd.getId(), vd);
@@ -201,14 +202,13 @@ public class MgdbDao extends Helper
 			
 		LinkedHashMap<VariantData, Collection<VariantRunData>> result = new LinkedHashMap<VariantData, Collection<VariantRunData>>();
 		for (Comparable variantId : variantIdListToRestrictTo)
-			result.put(variantIdToVariantMap.get(ObjectId.isValid(variantId.toString()) ? new ObjectId(variantId.toString()) : variantId), null);
+			result.put(variantIdToVariantMap.get(ObjectId.isValid(variantId.toString()) ? new ObjectId(variantId.toString()) : variantId), new ArrayDeque<VariantRunData>());
 
 		for (int projectId : projectIdToReturnedRunFieldListMap.keySet())
 		{
-			Query runQuery = new Query();
+			Query runQuery = new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(projectId));
 			if (runQueryVariantCriteria != null)
 				runQuery.addCriteria(runQueryVariantCriteria);
-			runQuery.addCriteria(new Criteria().where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(projectId));
 
 			runQuery.fields().include("_id");
 			for (String returnedField : projectIdToReturnedRunFieldListMap.get(projectId))
@@ -216,17 +216,7 @@ public class MgdbDao extends Helper
 			
 			List<VariantRunData> runs = mongoTemplate.find(runQuery, VariantRunData.class);
 			for (VariantRunData run : runs)
-			{
-				Comparable variantId = run.getId().getVariantId();
-				VariantData variant = variantIdToVariantMap.get(variantId);
-				Collection<VariantRunData> variantRuns = result.get(variant);
-				if (variantRuns == null)
-				{
-					variantRuns = new ArrayList<VariantRunData>();
-					result.put(variant, variantRuns);
-				}
-				variantRuns.add(run);
-			}
+				result.get(variantIdToVariantMap.get(run.getId().getVariantId())).add(run);
 		}
 	
 		if (result.size() != variantIdListToRestrictTo.size())
