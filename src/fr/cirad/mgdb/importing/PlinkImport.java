@@ -232,11 +232,6 @@ public class PlinkImport extends AbstractGenotypeImport {
 			if (!project.getVariantTypes().contains(Type.SNP.toString()))
 				project.getVariantTypes().add(Type.SNP.toString());
 
-			ArrayList<VariantData> unsavedVariants = new ArrayList<VariantData>();
-			ArrayList<VariantRunData> unsavedRuns = new ArrayList<VariantRunData>();
-			long count = 0;
-
-			
 			// rotate matrix using temporary files
 			info = "Reading and reorganizing genotypes";
 			LOG.info(info);
@@ -244,167 +239,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 			progress.moveToNextStep();	
 			HashMap<String, String> userIndividualToPopulationMapToFill = new LinkedHashMap<>();
 			File[] tempFiles = rotatePlinkPedFile(variants, pedFilePath, userIndividualToPopulationMapToFill);
-			String[] individuals = userIndividualToPopulationMapToFill.keySet().toArray(new String[userIndividualToPopulationMapToFill.size()]);
-
-			
-			// loop over each variation and write to DB
-			Scanner scanner = null;
-			try
-			{
-				info = "Importing genotypes";
-				LOG.info(info);
-				progress.addStep(info);
-				progress.moveToNextStep();
-				progress.setPercentageEnabled(true);
-				
-				int nNumberOfVariantsToSaveAtOnce = 1;
-				HashMap<String /*individual*/, SampleId> previouslyCreatedSamples = new HashMap<String /*individual*/, SampleId>();
-
-				for (File tempFile : tempFiles)
-				{
-					scanner = new Scanner(tempFile);
-					long nPreviousProgressPercentage = -1;
-					mainLoop : while (scanner.hasNextLine())
-					{
-						StringTokenizer variantFields = new StringTokenizer(scanner.nextLine(), "\t");
-						String providedVariantId = variantFields.nextToken();
-						if (providedVariantId.toString().startsWith("*"))
-						{
-							System.err.print("\r\nSkipping deprecated variant data: " + providedVariantId);
-							continue;
-						}
-
-						String[] seqAndPos = variantsAndPositions.get(providedVariantId).split("\t");
-						String sequence = seqAndPos[0];
-						Long bpPosition = Long.parseLong(seqAndPos[1]);
-						if ("0".equals(sequence) || 0 == bpPosition)
-						{
-							sequence = null;
-							bpPosition = null;
-						}
-						Comparable variantId = null;
-						for (String variantDescForPos : getIdentificationStrings(Type.SNP.toString(), sequence, bpPosition, Arrays.asList(new String[] {providedVariantId})))
-						{
-							variantId = existingVariantIDs.get(variantDescForPos);
-							if (variantId != null)
-								break;
-						}
-						
-						if (variantId == null)
-						{
-							if (fImportUnknownVariants)
-								LOG.warn("Import of unknown variant (" + providedVariantId + ") not yet implemented");
-							else
-								LOG.warn("Skipping unknown variant: " + providedVariantId);
-						}
-						else
-						{
-							VariantData variant = mongoTemplate.findById(variantId == null ? providedVariantId : variantId, VariantData.class);							
-							if (variant == null)
-								variant = new VariantData(providedVariantId);
-							if (!unsavedVariants.contains(variant))
-								unsavedVariants.add(variant);
-//							else
-//								System.out.println(providedVariantId);
-	
-							String[][] alleles = new String[2][individuals.length];
-							int nIndividualIndex = 0;
-							while (nIndividualIndex < alleles[0].length)
-							{
-								ArrayList<String> inconsistentIndividuals = inconsistencies.get(variant.getId());
-								boolean fInconsistentData = inconsistentIndividuals != null && inconsistentIndividuals.contains(individuals[nIndividualIndex]);
-								if (fInconsistentData)
-									LOG.warn("Not adding inconsistent data: " + providedVariantId + " / " + individuals[nIndividualIndex]);
-
-								String genotype = variantFields.nextToken();
-//								if ("ADP0009".equals(individuals[nIndividualIndex]) && providedVariantId.equals("OAR10_210963.1"))
-//									System.out.println(genotype);
-//								else
-//									continue mainLoop;
-								alleles[0][nIndividualIndex] = fInconsistentData ? "0" : genotype.substring(0, 1);
-								alleles[1][nIndividualIndex++] = fInconsistentData ? "0" : genotype.substring(1, 2);
-							}
-	
-							VariantRunData runToSave = addPlinkDataToVariant(mongoTemplate, variant, sequence, bpPosition, userIndividualToPopulationMapToFill, alleles, project, sRun, previouslyCreatedSamples);
-							if (!unsavedRuns.contains(runToSave))
-								unsavedRuns.add(runToSave);
-							
-							if (count == 0)
-							{
-								nNumberOfVariantsToSaveAtOnce = Math.max(1, 30000 / individuals.length);
-								LOG.info("Importing by chunks of size " + nNumberOfVariantsToSaveAtOnce);
-							}
-							if (count % nNumberOfVariantsToSaveAtOnce == 0)
-							{
-								if (existingVariantIDs.size() == 0)
-								{	// we benefit from the fact that it's the first variant import into this database to use bulk insert which is meant to be faster
-									mongoTemplate.insert(unsavedVariants, VariantData.class);
-									mongoTemplate.insert(unsavedRuns, VariantRunData.class);
-								}
-								else
-								{
-									for (VariantData vd : unsavedVariants)
-										mongoTemplate.save(vd);
-									for (VariantRunData run : unsavedRuns)
-										mongoTemplate.save(run);
-								}
-								unsavedVariants.clear();
-								unsavedRuns.clear();
-			
-								long nProgressPercentage = count * 100 / variants.length;
-								if (nPreviousProgressPercentage != nProgressPercentage)
-								{
-									progress.setCurrentStepProgress(nProgressPercentage);
-									if (count > 0 && (count % (10 * nNumberOfVariantsToSaveAtOnce) == 0))
-									{
-										info = count + " lines processed (" + nProgressPercentage + "%)"/*"(" + (System.currentTimeMillis() - before) / 1000 + ")\t"*/;
-										LOG.debug(info);
-									}
-									nPreviousProgressPercentage = nProgressPercentage;
-								}
-							}
-
-							int ploidy = 2;	// the only one supported by PLINK format 
-							if (project.getPloidyLevel() < ploidy)
-								project.setPloidyLevel(ploidy);
-	
-							if (variant.getReferencePosition() != null && !project.getSequences().contains(variant.getReferencePosition().getSequence()))
-								project.getSequences().add(variant.getReferencePosition().getSequence());
-	
-							project.getAlleleCounts().add(variant.getKnownAlleleList().size());	// it's a TreeSet so it will only be added if it's not already present
-							if (variant.getKnownAlleleList().size() > 2)
-								System.out.println("tadam");
-						}
-						count++;
-					}
-					scanner.close();
-				}
-			}
-			finally
-			{
-				scanner.close();
-				for (File f : tempFiles)
-					if (f != null)
-						f.delete();
-			}
-
-			if (existingVariantIDs.size() == 0)
-			{	// we benefit from the fact that it's the first variant import into this database to use bulk insert which is meant to be faster
-				mongoTemplate.insert(unsavedVariants, VariantData.class);
-				mongoTemplate.insert(unsavedRuns, VariantRunData.class);
-			}
-			else
-			{
-				for (VariantData vd : unsavedVariants)
-					mongoTemplate.save(vd);
-				for (VariantRunData run : unsavedRuns)
-					mongoTemplate.save(run);							
-			}
-
-			// save project data
-			if (!project.getRuns().contains(sRun))
-				project.getRuns().add(sRun);
-			mongoTemplate.save(project);
+			long count = importTempFileContents(progress, mongoTemplate, tempFiles, variantsAndPositions, existingVariantIDs, project, sRun, inconsistencies, userIndividualToPopulationMapToFill);
 
 			LOG.info("Import took " + (System.currentTimeMillis() - before) / 1000 + "s for " + count + " records");
 
@@ -418,6 +253,172 @@ public class PlinkImport extends AbstractGenotypeImport {
 			if (ctx != null)
 				ctx.close();
 		}
+	}
+
+	public long importTempFileContents(ProgressIndicator progress, MongoTemplate mongoTemplate, File[] tempFiles, LinkedHashMap<String, String> variantsAndPositions, HashMap<String, Comparable> existingVariantIDs,
+			GenotypingProject project, String sRun, HashMap<Comparable, ArrayList<String>> inconsistencies, Map<String, String> userIndividualToPopulationMap) throws Exception			
+	{
+		String[] individuals = userIndividualToPopulationMap.keySet().toArray(new String[userIndividualToPopulationMap.size()]);
+		ArrayList<VariantData> unsavedVariants = new ArrayList<VariantData>();
+		ArrayList<VariantRunData> unsavedRuns = new ArrayList<VariantRunData>();
+		long count = 0;
+		
+		// loop over each variation and write to DB
+		Scanner scanner = null;
+		try
+		{
+			String info = "Importing genotypes";
+			LOG.info(info);
+			progress.addStep(info);
+			progress.moveToNextStep();
+			progress.setPercentageEnabled(true);
+			
+			int nNumberOfVariantsToSaveAtOnce = 1;
+			HashMap<String /*individual*/, SampleId> previouslyCreatedSamples = new HashMap<String /*individual*/, SampleId>();
+
+			for (File tempFile : tempFiles)
+			{
+				scanner = new Scanner(tempFile);
+				long nPreviousProgressPercentage = -1;
+				mainLoop : while (scanner.hasNextLine())
+				{
+					StringTokenizer variantFields = new StringTokenizer(scanner.nextLine(), "\t");
+					String providedVariantId = variantFields.nextToken();
+					if (providedVariantId.toString().startsWith("*"))
+					{
+						System.err.print("\r\nSkipping deprecated variant data: " + providedVariantId);
+						continue;
+					}
+
+					String[] seqAndPos = variantsAndPositions.get(providedVariantId).split("\t");
+					String sequence = seqAndPos[0];
+					Long bpPosition = Long.parseLong(seqAndPos[1]);
+					if ("0".equals(sequence) || 0 == bpPosition)
+					{
+						sequence = null;
+						bpPosition = null;
+					}
+					Comparable variantId = null;
+					for (String variantDescForPos : getIdentificationStrings(Type.SNP.toString(), sequence, bpPosition, Arrays.asList(new String[] {providedVariantId})))
+					{
+						variantId = existingVariantIDs.get(variantDescForPos);
+						if (variantId != null)
+							break;
+					}
+					
+					if (variantId == null)
+					{
+						if (fImportUnknownVariants)
+							LOG.warn("Import of unknown variant (" + providedVariantId + ") not yet implemented");
+						else
+							LOG.warn("Skipping unknown variant: " + providedVariantId);
+					}
+					else
+					{
+						VariantData variant = mongoTemplate.findById(variantId == null ? providedVariantId : variantId, VariantData.class);							
+						if (variant == null)
+							variant = new VariantData(providedVariantId);
+						if (!unsavedVariants.contains(variant))
+							unsavedVariants.add(variant);
+//						else
+//							System.out.println(providedVariantId);
+
+						String[][] alleles = new String[2][individuals.length];
+						int nIndividualIndex = 0;
+						while (nIndividualIndex < alleles[0].length)
+						{
+							ArrayList<String> inconsistentIndividuals = inconsistencies.get(variant.getId());
+							boolean fInconsistentData = inconsistentIndividuals != null && inconsistentIndividuals.contains(individuals[nIndividualIndex]);
+							if (fInconsistentData)
+								LOG.warn("Not adding inconsistent data: " + providedVariantId + " / " + individuals[nIndividualIndex]);
+
+							String genotype = variantFields.nextToken();
+							alleles[0][nIndividualIndex] = fInconsistentData ? "0" : genotype.substring(0, 1);
+							alleles[1][nIndividualIndex++] = fInconsistentData ? "0" : genotype.substring(1, 2);
+						}
+
+						VariantRunData runToSave = addPlinkDataToVariant(mongoTemplate, variant, sequence, bpPosition, userIndividualToPopulationMap, alleles, project, sRun, previouslyCreatedSamples);
+						if (!unsavedRuns.contains(runToSave))
+							unsavedRuns.add(runToSave);
+						
+						if (count == 0)
+						{
+							nNumberOfVariantsToSaveAtOnce = Math.max(1, 30000 / individuals.length);
+							LOG.info("Importing by chunks of size " + nNumberOfVariantsToSaveAtOnce);
+						}
+						if (count % nNumberOfVariantsToSaveAtOnce == 0)
+						{
+							if (existingVariantIDs.size() == 0)
+							{	// we benefit from the fact that it's the first variant import into this database to use bulk insert which is meant to be faster
+								mongoTemplate.insert(unsavedVariants, VariantData.class);
+								mongoTemplate.insert(unsavedRuns, VariantRunData.class);
+							}
+							else
+							{
+								for (VariantData vd : unsavedVariants)
+									mongoTemplate.save(vd);
+								for (VariantRunData run : unsavedRuns)
+									mongoTemplate.save(run);
+							}
+							unsavedVariants.clear();
+							unsavedRuns.clear();
+		
+							long nProgressPercentage = count * 100 / variantsAndPositions.size();
+							if (nPreviousProgressPercentage != nProgressPercentage)
+							{
+								progress.setCurrentStepProgress(nProgressPercentage);
+								if (count > 0 && (count % (10 * nNumberOfVariantsToSaveAtOnce) == 0))
+								{
+									info = count + " lines processed (" + nProgressPercentage + "%)"/*"(" + (System.currentTimeMillis() - before) / 1000 + ")\t"*/;
+									LOG.debug(info);
+								}
+								nPreviousProgressPercentage = nProgressPercentage;
+							}
+						}
+
+						int ploidy = 2;	// the only one supported by PLINK format 
+						if (project.getPloidyLevel() < ploidy)
+							project.setPloidyLevel(ploidy);
+
+						if (variant.getReferencePosition() != null && !project.getSequences().contains(variant.getReferencePosition().getSequence()))
+							project.getSequences().add(variant.getReferencePosition().getSequence());
+
+						project.getAlleleCounts().add(variant.getKnownAlleleList().size());	// it's a TreeSet so it will only be added if it's not already present
+						if (variant.getKnownAlleleList().size() > 2)
+							System.out.println("tadam");
+					}
+					count++;
+				}
+				scanner.close();
+				
+				if (existingVariantIDs.size() == 0)
+				{	// we benefit from the fact that it's the first variant import into this database to use bulk insert which is meant to be faster
+					mongoTemplate.insert(unsavedVariants, VariantData.class);
+					mongoTemplate.insert(unsavedRuns, VariantRunData.class);
+				}
+				else
+				{
+					for (VariantData vd : unsavedVariants)
+						mongoTemplate.save(vd);
+					for (VariantRunData run : unsavedRuns)
+						mongoTemplate.save(run);							
+				}
+				
+				// save project data
+				if (!project.getRuns().contains(sRun))
+					project.getRuns().add(sRun);
+				mongoTemplate.save(project);
+
+			}
+		}
+		finally
+		{
+			scanner.close();
+			for (File f : tempFiles)
+				if (f != null)
+					f.delete();
+		}
+		return count;
 	}
 
 	private File[] rotatePlinkPedFile(String[] variants, String pedFilePath, Map<String, String> userIndividualToPopulationMapToFill) throws IOException, WrongNumberArgsException
