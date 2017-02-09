@@ -102,8 +102,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 					throw new Exception("DATASOURCE '" + sModule + "' is not supported!");
 			}
 			
-//			if (MongoTemplateManager.getAppConfig().get("allow_importing_unknown_variants") == "0")
-//				allowImportingUnknownVariants(false);
 			GenotypingProject project = mongoTemplate.findOne(new Query(Criteria.where(GenotypingProject.FIELDNAME_NAME).is(sProject)), GenotypingProject.class);
 			
 			if (importMode == 2) // drop database before importing

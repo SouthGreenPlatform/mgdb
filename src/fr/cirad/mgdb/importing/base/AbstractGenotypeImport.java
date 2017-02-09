@@ -6,11 +6,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 import org.apache.log4j.Logger;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
 import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
+import fr.cirad.tools.mongo.MongoTemplateManager;
 
 public class AbstractGenotypeImport {
 	
@@ -20,13 +22,13 @@ public class AbstractGenotypeImport {
 	{
 		ArrayList<String> result = new ArrayList<String>();
 		
-		if (sSeq != null && nStartPos != null)
-			result.add(sType + "¤" + sSeq + "¤" + nStartPos);
-		
 		if (idAndSynonyms != null)
 			for (String name : idAndSynonyms)
 				result.add(name.toUpperCase());
-		
+
+		if (sSeq != null && nStartPos != null)
+			result.add(sType + "¤" + sSeq + "¤" + nStartPos);
+
 		if (result.size() == 0)
 			throw new Exception("Not enough info provided to build identification strings");
 		
@@ -66,4 +68,25 @@ public class AbstractGenotypeImport {
         }
         return existingVariantIDs;
 	}
+	
+	public boolean doesDatabaseSupportImportingUnknownVariants(String sModule)
+	{
+		MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
+		long variantCount = mongoTemplate.count(null, VariantData.class);
+		String firstId = null, lastId = null;
+        Query query = new Query().with(new Sort("_id"));
+        query.fields().include("_id");
+        VariantData firstVariant = mongoTemplate.findOne(query, VariantData.class);
+		if (firstVariant != null)
+			firstId = firstVariant.getId().toString();
+		query = new Query().with(new Sort(Sort.Direction.DESC, "_id"));
+		query.fields().include("_id");
+		VariantData lastVariant = mongoTemplate.findOne(query, VariantData.class);
+		if (lastVariant != null)
+			lastId = lastVariant.getId().toString();	
+
+		boolean fLooksLikePreprocessedVariantList = firstId != null && lastId != null && firstId.endsWith("001") && lastId.endsWith("" + variantCount);
+		LOG.debug("Database " + sModule + " does " + (fLooksLikePreprocessedVariantList ? "not " : "") + "support importing unknown variants");
+		return !fLooksLikePreprocessedVariantList;
+	}		
 }

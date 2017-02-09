@@ -77,7 +77,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 	/** String representing nucleotides considered as valid */
 	private static HashSet<String> validNucleotides = new HashSet<>(Arrays.asList(new String[] {"a", "A", "t", "T", "g", "G", "c", "C"}));
 	
-	private static final boolean fImportUnknownVariants = false;
+	private boolean fImportUnknownVariants = false;
 	
 	/**
 	 * Instantiates a new hap map import.
@@ -170,6 +170,8 @@ public class PlinkImport extends AbstractGenotypeImport {
 					throw new Exception("DATASOURCE '" + sModule + "' is not supported!");
 			}
 
+			fImportUnknownVariants = doesDatabaseSupportImportingUnknownVariants(sModule);			
+
 			if (m_processID == null)
 				m_processID = "IMPORT__" + sModule + "__" + sProject + "__" + sRun + "__" + System.currentTimeMillis();
 
@@ -201,8 +203,8 @@ public class PlinkImport extends AbstractGenotypeImport {
 					LOG.info(wr.getN() + " records removed from variantRunData");
 					wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);	// we are going to re-write it
 				}
-//				if (mongoTemplate.count(null, VariantRunData.class) == 0)
-//					mongoTemplate.getDb().dropDatabase(); // if there is no genotyping data then any other data is irrelevant
+				if (mongoTemplate.count(null, VariantRunData.class) == 0 && fImportUnknownVariants)
+					mongoTemplate.getDb().dropDatabase(); // if there is no genotyping data then any other data is irrelevant
 			}
 
 			// create project if necessary
@@ -306,11 +308,11 @@ public class PlinkImport extends AbstractGenotypeImport {
 							break;
 					}
 					
-					if (variantId == null)
+					if (variantId == null && !fImportUnknownVariants)
 					{
-						if (fImportUnknownVariants)
-							LOG.warn("Import of unknown variant (" + providedVariantId + ") not yet implemented");
-						else
+//						if (fImportUnknownVariants)
+//							LOG.warn("Import of unknown variant (" + providedVariantId + ") not yet implemented");
+//						else
 							LOG.warn("Skipping unknown variant: " + providedVariantId);
 					}
 					else
@@ -385,14 +387,14 @@ public class PlinkImport extends AbstractGenotypeImport {
 
 						project.getAlleleCounts().add(variant.getKnownAlleleList().size());	// it's a TreeSet so it will only be added if it's not already present
 						if (variant.getKnownAlleleList().size() > 2)
-							System.out.println("tadam");
+							LOG.warn("Variant " + variant.getId() + " (" + providedVariantId + ") has more than 2 alleles!");
 					}
 					count++;
 				}
 				scanner.close();
 				
 				if (existingVariantIDs.size() == 0)
-				{	// we benefit from the fact that it's the first variant import into this database to use bulk insert which is meant to be faster
+				{	// we benefit from the fact that it's the first variant import into this database and therefore use bulk insert which is meant to be faster
 					mongoTemplate.insert(unsavedVariants, VariantData.class);
 					mongoTemplate.insert(unsavedRuns, VariantRunData.class);
 				}
@@ -584,7 +586,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 		return run;
 	}
 	
-	private static HashMap<Comparable, ArrayList<String>> checkSynonymGenotypeConsistency(String pedFilePath, String[] variants, HashMap<String, Comparable> existingVariantIDs, String outputFilePrefix) throws IOException, WrongNumberArgsException
+	private HashMap<Comparable, ArrayList<String>> checkSynonymGenotypeConsistency(String pedFilePath, String[] variants, HashMap<String, Comparable> existingVariantIDs, String outputFilePrefix) throws IOException, WrongNumberArgsException
 	{
 		long before = System.currentTimeMillis();
 		File pedFile = new File(pedFilePath);
@@ -628,16 +630,8 @@ public class PlinkImport extends AbstractGenotypeImport {
 						
 						String providedVariantName = variants[nCurrentVariantIndex];
 						Comparable widdeId = existingVariantIDs.get(providedVariantName.toUpperCase());
-						if (widdeId == null)
-						{
-							if (fImportUnknownVariants)
-								LOG.warn("Import of unknown variant (" + providedVariantName + ") not yet implemented");
-							continue;
-						}
-						else if (widdeId.toString().startsWith("*"))
+						if (widdeId != null && widdeId.toString().startsWith("*"))
 							continue;	// this is a deprecated SNP
-//						else if (widdeId.toString().equals("BTA000452233"))
-//							System.out.println("tadam");
 						
 						HashMap<String, String> synonymsByGenotype = genotypesByVariant.get(widdeId);
 						if (synonymsByGenotype == null)

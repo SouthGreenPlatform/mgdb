@@ -155,9 +155,9 @@ public class VariantData
 	@Field(FIELDNAME_SYNONYMS)
 	private TreeMap<String /*synonym type*/, TreeSet<Comparable>> synonyms = new TreeMap<String, TreeSet<Comparable>>();
 
-	/** The list of analysis methods. */
+	/** The analysis methods. */
 	@Field(FIELDNAME_ANALYSIS_METHODS)
-	private List<String> analysisMethods = null;
+	private TreeSet<String> analysisMethods = null;
 
 	/** The known allele list. */
 	@Field(FIELDNAME_KNOWN_ALLELE_LIST)
@@ -230,11 +230,11 @@ public class VariantData
 		this.synonyms = synonyms;
 	}
 	
-	public List<String> getAnalysisMethods() {
+	public TreeSet<String> getAnalysisMethods() {
 		return analysisMethods;
 	}
 
-	public void setAnalysisMethods(List<String> analysisMethods) {
+	public void setAnalysisMethods(TreeSet<String> analysisMethods) {
 		this.analysisMethods = analysisMethods;
 	}
 

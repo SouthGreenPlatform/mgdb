@@ -160,10 +160,10 @@ public class InitialVariantImport {
 						String chipList = cells.get(header.indexOf("chip"));
 						if (chipList.length() > 0)
 						{
-							List<String> analysisMethods = new ArrayList<String>();
+							TreeSet<String> analysisMethods = new TreeSet<String>();
 								for (String chip : chipList.split(";"))
 									analysisMethods.add(chip);
-										variant.setAnalysisMethods(analysisMethods);
+							variant.setAnalysisMethods(analysisMethods);
 						}
 
 						for (int i=0; i<header.size(); i++)
