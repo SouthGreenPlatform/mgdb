@@ -500,8 +500,9 @@ public class PlinkImport extends AbstractGenotypeImport {
 		else if (!variantToFeed.getType().equals(Type.SNP.toString()))
 			throw new Exception("Variant type mismatch between existing data and data to import: " + variantToFeed.getId());
 
-		if (variantToFeed.getReferencePosition() == null && sequence != null)	// otherwise we leave it as it is (had some trouble with overridden end-sites)
-			variantToFeed.setReferencePosition(new ReferencePosition(sequence, bpPos, bpPos));
+//		if (variantToFeed.getReferencePosition() == null && sequence != null)	// otherwise we leave it as it is (had some trouble with overridden end-sites)
+//			System.out.println(variantToFeed.getId() + " " + variantToFeed.getSynonyms().get("il") + " (chr" + sequence + ")");
+//			variantToFeed.setReferencePosition(new ReferencePosition(sequence, bpPos, bpPos));
 
 		VariantRunData run = new VariantRunData(new VariantRunData.VariantRunDataId(project.getId(), runName, variantToFeed.getId()));
 				

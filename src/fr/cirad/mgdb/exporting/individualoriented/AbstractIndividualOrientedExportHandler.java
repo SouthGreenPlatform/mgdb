@@ -50,6 +50,7 @@ import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleGenotype;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.mgdb.model.mongodao.MgdbDao;
+import fr.cirad.tools.Helper;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
@@ -162,7 +163,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 			while (markerCursor.hasNext() && (fStartingNewChunk || nLoadedMarkerCountInLoop%nChunkSize != 0)) {
 				DBObject exportVariant = markerCursor.next();
 				DBObject refPos = (DBObject) exportVariant.get(VariantData.FIELDNAME_REFERENCE_POSITION);
-				markerChromosomalPositions.put((Comparable) exportVariant.get("_id"), refPos.get(ReferencePosition.FIELDNAME_SEQUENCE) + ":" + refPos.get(ReferencePosition.FIELDNAME_START_SITE));
+				markerChromosomalPositions.put((Comparable) exportVariant.get("_id"), refPos == null ? null : (refPos.get(ReferencePosition.FIELDNAME_SEQUENCE) + ":" + refPos.get(ReferencePosition.FIELDNAME_START_SITE)));
 				nLoadedMarkerCountInLoop++;
 				fStartingNewChunk = false;
 			}
@@ -225,7 +226,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 						genotypeBuffer = new StringBuffer(); 
 						individualGenotypeBuffers.put(individual, genotypeBuffer); // we are about to write individual's first genotype for this chunk
 					}
-					Integer gtCount = MgdbDao.getCountForKey(individualOutputGenotypeCounts, individual);
+					Integer gtCount = Helper.getCountForKey(individualOutputGenotypeCounts, individual);
 					while (gtCount < markerIndex)
 					{
 						genotypeBuffer.append(LINE_SEPARATOR);
@@ -250,7 +251,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 					os.write(chunkStringBuffer.toString().getBytes());
 				
 				// deal with trailing missing genotypes
-				Integer gtCount = MgdbDao.getCountForKey(individualOutputGenotypeCounts, individual);
+				Integer gtCount = Helper.getCountForKey(individualOutputGenotypeCounts, individual);
 				while (gtCount < nLoadedMarkerCount + currentMarkers.size())
 				{
 					os.write(LINE_SEPARATOR.getBytes());

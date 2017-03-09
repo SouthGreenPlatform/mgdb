@@ -380,7 +380,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				else
 				{
 					ArrayList<Integer> alleleIndexList = new ArrayList<Integer>();	
-//					List<Float> freqs = new ArrayList<Float>();
 					boolean fAddedSomeAlleles = false;
 					for (int i=3; i<=4; i++)
 					{
@@ -392,7 +391,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 						}
 						
 						alleleIndexList.add(variant.getKnownAlleleList().indexOf(cells[indexToUse]));
-//						freqs.add(0.5f /*FIXME: should be calculated*/);
 					}
 					
 					if (fAddedSomeAlleles && update != null)
@@ -403,9 +401,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				}
 
 				SampleGenotype genotype = new SampleGenotype(gtString);
-//					genotype.getAdditionalInfo().put("frq", StringUtils.join(freqs, "/"));
-//				if (usedSamples.get(sIndividualName) == null)
-//					LOG.info(sVariantId + " / " + sIndividualName + " / " + usedSamples.size());
 				theRun.getSampleGenotypes().put(usedSamples.get(sIndividualName).getSampleIndex(), genotype);
 			}
             project.getAlleleCounts().add(variant.getKnownAlleleList().size());	// it's a TreeSet so it will only be added if it's not already present

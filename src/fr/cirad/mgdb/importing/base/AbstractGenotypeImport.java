@@ -8,6 +8,7 @@ import java.util.Iterator;
 import org.apache.log4j.Logger;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
@@ -74,13 +75,13 @@ public class AbstractGenotypeImport {
 		MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
 		long variantCount = mongoTemplate.count(null, VariantData.class);
 		String firstId = null, lastId = null;
-        Query query = new Query().with(new Sort("_id"));
+		Query query = new Query(Criteria.where("_id").not().regex("^\\*.*"));
+        query.with(new Sort("_id"));
         query.fields().include("_id");
         VariantData firstVariant = mongoTemplate.findOne(query, VariantData.class);
 		if (firstVariant != null)
 			firstId = firstVariant.getId().toString();
-		query = new Query().with(new Sort(Sort.Direction.DESC, "_id"));
-		query.fields().include("_id");
+		query.with(new Sort(Sort.Direction.DESC, "_id"));
 		VariantData lastVariant = mongoTemplate.findOne(query, VariantData.class);
 		if (lastVariant != null)
 			lastId = lastVariant.getId().toString();	

@@ -34,7 +34,7 @@ import com.mongodb.WriteResult;
 
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
 import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
-import fr.cirad.mgdb.model.mongodao.MgdbDao;
+import fr.cirad.tools.Helper;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
 // TODO: Auto-generated Javadoc
@@ -215,6 +215,6 @@ public class ReferencePositionImport {
 	 */
 	private static List<String> splitByComaSpaceOrTab(String s)
 	{
-		return MgdbDao.split(s, s.contains(",") ? "," : (s.contains(" ") ? " " : "\t"));
+		return Helper.split(s, s.contains(",") ? "," : (s.contains(" ") ? " " : "\t"));
 	}
 }

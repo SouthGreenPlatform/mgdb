@@ -40,6 +40,7 @@ import org.springframework.data.mongodb.core.query.Query;
 
 import com.mongodb.WriteResult;
 
+import fr.cirad.mgdb.importing.base.AbstractGenotypeImport;
 import fr.cirad.mgdb.model.mongo.maintypes.AutoIncrementCounter;
 import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader;
 import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader.VcfHeaderId;
@@ -60,7 +61,7 @@ import fr.cirad.tools.mongo.MongoTemplateManager;
 /**
  * The Class HapMapImport.
  */
-public class HapMapImport {
+public class HapMapImport extends AbstractGenotypeImport {
 	
 	/** The Constant LOG. */
 	private static final Logger LOG = Logger.getLogger(VariantData.class);
@@ -182,8 +183,8 @@ public class HapMapImport {
 					LOG.info(wr.getN() + " records removed from variantRunData");
 					wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);	// we are going to re-write it
 				}
-//				if (mongoTemplate.count(null, VariantRunData.class) == 0)
-//					mongoTemplate.getDb().dropDatabase(); // if there is no genotyping data then any other data is irrelevant
+                if (mongoTemplate.count(null, VariantRunData.class) == 0 && doesDatabaseSupportImportingUnknownVariants(sModule))
+                    mongoTemplate.getDb().dropDatabase(); // if there is no genotyping data left and we are not working on a fixed list of variants then any other data is irrelevant
 			}
 
 			// create project if necessary
@@ -195,27 +196,7 @@ public class HapMapImport {
 				project.setTechnology(sTechnology);
 			}
 
-			long beforeReadingAllVariants = System.currentTimeMillis();
-			// First build a list of all variants that exist in the database: finding them by ID is by far most efficient
-			HashMap<String, Comparable> existingVariantIDs = new HashMap<String, Comparable>();
-			Query query = new Query();
-			query.fields().include("_id").include(VariantData.FIELDNAME_REFERENCE_POSITION).include(VariantData.FIELDNAME_TYPE);
-			Iterator<VariantData> variantIterator = mongoTemplate.find(query, VariantData.class).iterator();
-			while (variantIterator.hasNext())
-			{
-				VariantData vd = variantIterator.next();
-				ReferencePosition chrPos = vd.getReferencePosition();
-				String variantDescForPos = vd.getType() + "::" + chrPos.getSequence() + "::" + chrPos.getStartSite();
-				existingVariantIDs.put(variantDescForPos, vd.getId());
-			}
-			if (existingVariantIDs.size() > 0)
-			{
-				String info = existingVariantIDs.size() + " VariantData record IDs were scanned in " + (System.currentTimeMillis() - beforeReadingAllVariants) / 1000 + "s";
-				LOG.info(info);
-				progress.addStep(info);
-				progress.moveToNextStep();
-			}
-			
+			HashMap<String, Comparable> existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate);		
 			if (!project.getVariantTypes().contains(Type.SNP.toString()))
 				project.getVariantTypes().add(Type.SNP.toString());
 
@@ -230,18 +211,23 @@ public class HapMapImport {
 			progress.moveToNextStep();
 			while (it.hasNext())
 			{
-				RawHapMapFeature hmFeature = it.next();               
-				String variantDescForPos = Type.SNP.toString() + "::" + hmFeature.getChr() + "::" + hmFeature.getStart();
+				RawHapMapFeature hmFeature = it.next();
 				try
 				{
-					Comparable variantId = existingVariantIDs.get(variantDescForPos);
+					Comparable variantId = null;
+					for (String variantDescForPos : getIdentificationStrings(Type.SNP.toString(), hmFeature.getChr(), (long) hmFeature.getStart(), hmFeature.getName().length() == 0 ? null : Arrays.asList(new String[] {hmFeature.getName()})))
+					{
+						variantId = existingVariantIDs.get(variantDescForPos);
+						if (variantId != null)
+							break;
+					}
 					VariantData variant = variantId == null ? null : mongoTemplate.findById(variantId, VariantData.class);
 					if (variant == null)
 						variant = new VariantData(hmFeature.getName() != null && hmFeature.getName().length() > 0 ? hmFeature.getName() : new ObjectId());
 					unsavedVariants.add(variant);
 					VariantRunData runToSave = addHapMapDataToVariant(mongoTemplate, variant, hmFeature, project, sRun, previouslyCreatedSamples);
 					if (!unsavedRuns.contains(runToSave))
-							unsavedRuns.add(runToSave);
+						unsavedRuns.add(runToSave);
 
 					if (count == 0)
 					{
@@ -287,7 +273,7 @@ public class HapMapImport {
 				}
 				catch (Exception e)
 				{
-					throw new Exception("Error occured importing variant number " + (count + 1) + " (" + variantDescForPos + ")", e);
+					throw new Exception("Error occured importing variant number " + (count + 1) + " (" + Type.SNP.toString() + ":" + hmFeature.getChr() + ":" + hmFeature.getStart() + ")", e);
 				}
 			}
 			reader.close();
