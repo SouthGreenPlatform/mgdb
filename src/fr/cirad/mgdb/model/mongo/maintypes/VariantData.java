@@ -27,13 +27,13 @@ import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 import org.springframework.data.annotation.Id;
@@ -46,7 +46,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleGenotype;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
-import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.Helper;
 
 // TODO: Auto-generated Javadoc
@@ -167,7 +166,34 @@ public class VariantData
 	@Field(SECTION_ADDITIONAL_INFO)
 	private HashMap<String, Comparable> additionalInfo = null;
 
+    public static int[] fixAdFieldValue(int[] importedAD, List<String> knownAlleles, List<? extends Comparable> importedAlleles)
+    {
+    	List<String> allelesAsStrings = importedAlleles.stream().filter(allele -> Allele.class.isAssignableFrom(allele.getClass()))
+    				.map(Allele.class::cast)
+    				.map(allele -> allele.getBaseString()).collect(Collectors.toList());
+    	
+    	if (allelesAsStrings.isEmpty())
+    		allelesAsStrings.addAll((Collection<? extends String>) importedAlleles);
+    	
+    	HashMap<Integer, Integer> knownAlleleToImportedAlleleIndexMap = new HashMap<>();
+    	for (int i=0; i<importedAlleles.size(); i++)
+    	{
+    		String allele = allelesAsStrings.get(i);
+    		int knownAlleleIndex = knownAlleles.indexOf(allele);
+    		if (knownAlleleToImportedAlleleIndexMap.get(knownAlleleIndex) == null)
+    				knownAlleleToImportedAlleleIndexMap.put(knownAlleleIndex, i);
+    	}
+    	int[] adToStore = new int[knownAlleles.size()];
+    	for (int i=0; i<adToStore.length; i++)
+    	{
+    		Integer importedAlleleIndex = knownAlleleToImportedAlleleIndexMap.get(i);
+    		adToStore[i] = importedAlleleIndex == null ? 0 : importedAD[importedAlleleIndex];
+    	}
+		System.out.println(Helper.arrayToCsv(", ", importedAD) + " -> " + Helper.arrayToCsv(", ", adToStore));
 
+    	return adToStore;
+    }
+    
 	/**
 	 * Instantiates a new variant data.
 	 */
@@ -363,56 +389,32 @@ public class VariantData
 	 *
 	 * @param alternates the alternates
 	 * @param genotypeAlleles the genotype alleles
-	 * @param genotypeAllele the genotype allele
+	 * @param fPhased whether or not the genotype is phased
 	 * @param keepCurrentPhasingInfo the keep current phasing info
 	 * @return the string
 	 * @throws Exception the exception
 	 */
-	public static String rebuildVcfFormatGenotype(List<Allele> alternates, List<Allele> genotypeAlleles, String genotypeAllele, boolean keepCurrentPhasingInfo) throws Exception
+	public static String rebuildVcfFormatGenotype(List<String> knownAlleleList, List<Allele> genotypeAlleles, boolean fPhased, boolean keepCurrentPhasingInfo) throws Exception
 	{
 		String result = "";
 		List<Allele> orderedGenotypeAlleles = new ArrayList<Allele>();
 		orderedGenotypeAlleles.addAll(genotypeAlleles);
-		if(!keepCurrentPhasingInfo){
-			Collections.sort(orderedGenotypeAlleles);
-		
 		mainLoop: for (Allele gtA : orderedGenotypeAlleles)
-			if (gtA.isReference())
-				result += (result.length() == 0 ? "" : "/") + 0;
-			else
+		{
+			String separator = keepCurrentPhasingInfo && fPhased ? "|" : "/";
+			for (int i=0; i<knownAlleleList.size(); i++)
 			{
-				for (int i=0; i<alternates.size(); i++)
+				String allele = knownAlleleList.get(i);
+				if (allele.equals(gtA.getBaseString()))
 				{
-					Allele altA = alternates.get(i);
-					if (altA.equals(gtA))
-					{
-						result += (result.length() == 0 ? "" : "/") + (i+1);
-						continue mainLoop;						
-					}
+					result += (result.length() == 0 ? "" : separator) + i;
+					continue mainLoop;						
 				}
-				if (!GT_FIELDVAL_AL_MISSING.equals(gtA.getBaseString()))
-					throw new Exception("Unable to find allele '" + gtA.getBaseString() + "' in alternate list");
 			}
+			if (!GT_FIELDVAL_AL_MISSING.equals(gtA.getBaseString()))
+				throw new Exception("Unable to find allele '" + gtA.getBaseString() + "' in alternate list");
 		}
-		else{
-			mainLoop: for (Allele gtA : orderedGenotypeAlleles)
-				if (gtA.isReference())
-					result += (result.length() == 0 ? "" : genotypeAllele.contains("|") ? "|" : "/") + 0;
-				else
-				{
-					for (int i=0; i<alternates.size(); i++)
-					{
-						Allele altA = alternates.get(i);
-						if (altA.equals(gtA))
-						{
-							result += (result.length() == 0 ? "" : genotypeAllele.contains("|") ? "|" : "/") + (i+1);
-							continue mainLoop;						
-						}
-					}
-					if (!GT_FIELDVAL_AL_MISSING.equals(gtA.getBaseString()))
-						throw new Exception("Unable to find allele '" + gtA.getBaseString() + "' in alternate list");
-				}
-		}
+
 		return result;
 	}
 		
@@ -569,7 +571,12 @@ public class VariantData
 					{
 						String ad = (String) sampleGenotype.getAdditionalInfo().get(key);
 						if (ad != null)
-							gb.AD(MgdbDao.csvToIntArray(ad));
+						{
+							int[] adArray = Helper.csvToIntArray(ad);
+							if (knownAlleleList.size() > adArray.length)
+								adArray = VariantData.fixAdFieldValue(adArray, knownAlleleList, knownAlleleList.subList(0, adArray.length));
+							gb.AD(adArray);
+						}
 						else
 							gb.noAD();
 					}
@@ -577,7 +584,7 @@ public class VariantData
 					{
 						String pl = (String) sampleGenotype.getAdditionalInfo().get(key);
 						if (pl != null)
-							gb.PL(MgdbDao.csvToIntArray(pl));
+							gb.PL(Helper.csvToIntArray(pl));
 						else
 							gb.noPL();
 					}
