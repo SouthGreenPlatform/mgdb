@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.math.util.MathUtils;
 import org.apache.log4j.Logger;
 
 import com.mongodb.DBObject;
@@ -57,6 +58,11 @@ public class Helper {
             LOG.error("Unable to find MD5 algorithm", e);
         }
     }
+    
+	static public long choose(int n, int k)
+	{
+		return MathUtils.factorial(n) / (MathUtils.factorial(k) * MathUtils.factorial(n - k));
+	}
 
     /**
      * Convert string array to number array.

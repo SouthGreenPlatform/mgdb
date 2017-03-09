@@ -40,6 +40,7 @@ import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData.VariantRunDataId;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleGenotype;
 import fr.cirad.mgdb.model.mongodao.MgdbDao;
+import fr.cirad.tools.Helper;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
 // TODO: Auto-generated Javadoc
@@ -308,11 +309,11 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 				else if ("+".equals(geneNames))
 					geneNameDBO = new BasicDBObject("$regex", ".*");
 				else
-					geneNameDBO = new BasicDBObject("$in", MgdbDao.split(geneNames, ","));
+					geneNameDBO = new BasicDBObject("$in", Helper.split(geneNames, ","));
 				initialMatchList.add(new BasicDBObject(VariantRunData.SECTION_ADDITIONAL_INFO + "." + VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_GENE, geneNameDBO));
 			}
 			if (variantEffects.length() > 0)
-				initialMatchList.add(new BasicDBObject(VariantRunData.SECTION_ADDITIONAL_INFO + "." + VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME, new BasicDBObject("$in", MgdbDao.split(variantEffects, ","))));
+				initialMatchList.add(new BasicDBObject(VariantRunData.SECTION_ADDITIONAL_INFO + "." + VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME, new BasicDBObject("$in", Helper.split(variantEffects, ","))));
         }
 		
         boolean fMultiRunProject = genotypingProject.getRuns().size() > 1;

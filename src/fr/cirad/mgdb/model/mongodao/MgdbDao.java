@@ -45,7 +45,7 @@ import fr.cirad.tools.Helper;
 /**
  * The Class MgdbDao.
  */
-public class MgdbDao extends Helper
+public class MgdbDao
 {
 	
 	/** The Constant LOG. */
@@ -97,7 +97,7 @@ public class MgdbDao extends Helper
 		long totalIndividualCount = mongoTemplate.count(new Query(), Individual.class);
 		long maxGenotypeCount = totalVariantCount*totalIndividualCount;
 		long numberOfTaggedVariants = Math.min(totalVariantCount / 2, maxGenotypeCount > 200000000 ? 300 : (maxGenotypeCount > 100000000 ? 200 : (maxGenotypeCount > 50000000 ? 100 : (maxGenotypeCount > 20000000 ? 50 : (maxGenotypeCount > 5000000 ? 40 : 30)))));
-		int nChunkSize = (int) Math.max(1, (int) totalVariantCount / (numberOfTaggedVariants - 1));
+		int nChunkSize = (int) Math.max(1, (int) totalVariantCount / Math.max(1, numberOfTaggedVariants - 1));
 		LOG.debug("Number of variants between 2 tagged ones: " + nChunkSize);
 		
 		DBCollection collection = mongoTemplate.getCollection(MgdbDao.COLLECTION_NAME_TAGGED_VARIANT_IDS);
@@ -153,11 +153,11 @@ public class MgdbDao extends Helper
 	private static LinkedHashMap<VariantData, Collection<VariantRunData>> getSampleGenotypes(MongoTemplate mongoTemplate, ArrayList<String> variantFieldsToReturn, HashMap<Integer, ArrayList<String>> projectIdToReturnedRunFieldListMap, List<? extends Comparable> variantIdListToRestrictTo, Sort sort) throws Exception
 	{
 		Query variantQuery = new Query();
-		Criteria runQueryVariantCriteria = null;
-
-//		query.with(sort == null ? new Sort(Direction.ASC, "_id") : sort);
 		if (sort != null)
 			variantQuery.with(sort);
+
+		Criteria runQueryVariantCriteria = null;
+
 		if (variantIdListToRestrictTo != null && variantIdListToRestrictTo.size() > 0)
 		{
 			List<Object> possiblyModifiedVariantIdList = new ArrayList<Object>();

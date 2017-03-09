@@ -24,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -58,6 +59,7 @@ import org.springframework.stereotype.Component;
 import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoCredential;
+import com.mongodb.MongoTimeoutException;
 import com.mongodb.ServerAddress;
 
 import fr.cirad.tools.AppConfig;
@@ -205,18 +207,24 @@ public class MongoTemplateManager implements ApplicationContextAware {
             ResourceBundle bundle = ResourceBundle.getBundle(resource, resourceControl);
             Map<String, Mongo> mongoHosts = applicationContext.getBeansOfType(Mongo.class);
 
-            for (String sHost : mongoHosts.keySet()) {
-                Mongo host = mongoHosts.get(sHost);
-                ServerAddress serverAddress = new ServerAddress(host.getAddress().getHost(), host.getAddress().getPort());
-                UserCredentials uc = null;
-                try {
-                    uc = applicationContext.getBean(sHost + "Credentials", UserCredentials.class);
-                } catch (NoSuchBeanDefinitionException nsbde) {
-                    LOG.warn("No user credentials configured for host " + sHost + "! You might want to create a bean UserCredentials named " + sHost + "Credentials");
-                }
-                MongoClient client = uc != null ? new MongoClient(serverAddress, Arrays.asList(MongoCredential.createCredential(uc.getUsername(), "admin", uc.getPassword().toCharArray()))) : new MongoClient(serverAddress);
-                mongoClients.put(sHost, client);
-            }
+            for (String sHost : mongoHosts.keySet())
+	            try
+	            {
+	                Mongo host = mongoHosts.get(sHost);
+	                ServerAddress serverAddress = new ServerAddress(host.getAddress().getHost(), host.getAddress().getPort());
+	                UserCredentials uc = null;
+	                try {
+	                    uc = applicationContext.getBean(sHost + "Credentials", UserCredentials.class);
+	                } catch (NoSuchBeanDefinitionException nsbde) {
+	                    LOG.warn("No user credentials configured for host " + sHost + "! You might want to create a bean UserCredentials named " + sHost + "Credentials");
+	                }
+	                MongoClient client = uc != null ? new MongoClient(serverAddress, Arrays.asList(MongoCredential.createCredential(uc.getUsername(), "admin", uc.getPassword().toCharArray()))) : new MongoClient(serverAddress);
+	                mongoClients.put(sHost, client);
+	            }
+	            catch (MongoTimeoutException mte)
+	            {
+	                LOG.warn("Unable to connect to host " + sHost, mte);
+	            }
             Enumeration<String> bundleKeys = bundle.getKeys();
 
             while (bundleKeys.hasMoreElements()) {
@@ -237,7 +245,8 @@ public class MongoTemplateManager implements ApplicationContextAware {
                     continue;
                 }
 
-                try {
+                try
+                {
                     templateMap.put(cleanKey, createMongoTemplate(cleanKey, datasourceInfo[0], datasourceInfo[1]));
                     if (fPublic) {
                         publicDatabases.add(cleanKey);
@@ -257,7 +266,13 @@ public class MongoTemplateManager implements ApplicationContextAware {
                         }
                     }
 
-                } catch (Exception e) {
+                }
+                catch (UnknownHostException e)
+                {
+                    LOG.warn("Unable to create MongoTemplate for module " + cleanKey + " (no such host)");
+                }
+                catch (Exception e)
+                {
                     LOG.warn("Unable to create MongoTemplate for module " + cleanKey, e);
                 }
             }
@@ -278,7 +293,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
     static public MongoTemplate createMongoTemplate(String sModule, String sHost, String sDbName) throws Exception {
         MongoClient client = mongoClients.get(sHost);
         if (client == null) {
-            throw new Exception("Unknown host: " + sHost);
+            throw new UnknownHostException("Unknown host: " + sHost);
         }
 
 //		UserCredentials uc = mongoCredentials.get(sHost);
