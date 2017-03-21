@@ -203,6 +203,9 @@ public class MongoTemplateManager implements ApplicationContextAware {
      */
     static public void loadDataSources() {
         templateMap.clear();
+        mongoClients.clear();
+        publicDatabases.clear();
+        hiddenDatabases.clear();
         try {
             ResourceBundle bundle = ResourceBundle.getBundle(resource, resourceControl);
             Map<String, Mongo> mongoHosts = applicationContext.getBeansOfType(Mongo.class);
