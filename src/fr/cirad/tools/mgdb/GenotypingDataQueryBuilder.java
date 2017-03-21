@@ -185,7 +185,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 		else
 		{
 	    	// we may need to split the query into several parts if the number of input variants is large (otherwise the query may exceed 16Mb)
-			this.nNVariantsQueriedAtOnce = MAX_NUMBER_OF_GENOTYPES_TO_QUERY_AT_ONCE / (nSampleCount * (NUMBER_OF_SIMULTANEOUS_QUERY_THREADS / 2));
+			this.nNVariantsQueriedAtOnce = MAX_NUMBER_OF_GENOTYPES_TO_QUERY_AT_ONCE / Math.max(1, nSampleCount * (NUMBER_OF_SIMULTANEOUS_QUERY_THREADS / 2));
 			this.variantCursor = tempExportColl.find().addOption(Bytes.QUERYOPTION_NOTIMEOUT);
 		}
     }
