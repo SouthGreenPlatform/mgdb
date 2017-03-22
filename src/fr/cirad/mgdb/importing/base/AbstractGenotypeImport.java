@@ -1,8 +1,10 @@
 package fr.cirad.mgdb.importing.base;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 
 import org.apache.log4j.Logger;
@@ -18,6 +20,9 @@ import fr.cirad.tools.mongo.MongoTemplateManager;
 public class AbstractGenotypeImport {
 	
 	private static final Logger LOG = Logger.getLogger(AbstractGenotypeImport.class);
+	
+	/** String representing nucleotides considered as valid */
+	protected static HashSet<String> validNucleotides = new HashSet<>(Arrays.asList(new String[] {"a", "A", "t", "T", "g", "G", "c", "C"}));
 	
 	protected static ArrayList<String> getIdentificationStrings(String sType, String sSeq, Long nStartPos, Collection<String> idAndSynonyms) throws Exception
 	{

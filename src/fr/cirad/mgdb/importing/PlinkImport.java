@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -73,9 +72,6 @@ public class PlinkImport extends AbstractGenotypeImport {
 	
 	/** The m_process id. */
 	private String m_processID;
-	
-	/** String representing nucleotides considered as valid */
-	private static HashSet<String> validNucleotides = new HashSet<>(Arrays.asList(new String[] {"a", "A", "t", "T", "g", "G", "c", "C"}));
 	
 	private boolean fImportUnknownVariants = false;
 	
@@ -339,7 +335,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 							alleles[1][nIndividualIndex++] = fInconsistentData ? "0" : genotype.substring(1, 2);
 						}
 
-						VariantRunData runToSave = addPlinkDataToVariant(mongoTemplate, variant, sequence, bpPosition, userIndividualToPopulationMap, alleles, project, sRun, previouslyCreatedSamples);
+						VariantRunData runToSave = addPlinkDataToVariant(mongoTemplate, variant, sequence, bpPosition, userIndividualToPopulationMap, alleles, project, sRun, previouslyCreatedSamples, fImportUnknownVariants);
 						if (!unsavedRuns.contains(runToSave))
 							unsavedRuns.add(runToSave);
 						
@@ -491,8 +487,9 @@ public class PlinkImport extends AbstractGenotypeImport {
 
 	/**
 	 * Adds the PLINK data to variant.
+	 * @param fImportUnknownVariants 
 	 */
-	static private VariantRunData addPlinkDataToVariant(MongoTemplate mongoTemplate, VariantData variantToFeed, String sequence, Long bpPos, Map<String, String> userIndividualToPopulationMap, String[][] alleles, GenotypingProject project, String runName, Map<String /*individual*/, SampleId> usedSamples) throws Exception
+	static private VariantRunData addPlinkDataToVariant(MongoTemplate mongoTemplate, VariantData variantToFeed, String sequence, Long bpPos, Map<String, String> userIndividualToPopulationMap, String[][] alleles, GenotypingProject project, String runName, Map<String /*individual*/, SampleId> usedSamples, boolean fImportUnknownVariants) throws Exception
 	{
 		// mandatory fields
 		if (variantToFeed.getType() == null)
@@ -500,9 +497,9 @@ public class PlinkImport extends AbstractGenotypeImport {
 		else if (!variantToFeed.getType().equals(Type.SNP.toString()))
 			throw new Exception("Variant type mismatch between existing data and data to import: " + variantToFeed.getId());
 
-//		if (variantToFeed.getReferencePosition() == null && sequence != null)	// otherwise we leave it as it is (had some trouble with overridden end-sites)
-//			System.out.println(variantToFeed.getId() + " " + variantToFeed.getSynonyms().get("il") + " (chr" + sequence + ")");
-//			variantToFeed.setReferencePosition(new ReferencePosition(sequence, bpPos, bpPos));
+		if (fImportUnknownVariants && variantToFeed.getReferencePosition() == null && sequence != null)	// otherwise we leave it as it is (had some trouble with overridden end-sites)
+			variantToFeed.setReferencePosition(new ReferencePosition(sequence, bpPos, bpPos));
+//		System.out.println(variantToFeed.getId() + " " + variantToFeed.getSynonyms().get("il") + " (chr" + sequence + ")");
 
 		VariantRunData run = new VariantRunData(new VariantRunData.VariantRunDataId(project.getId(), runName, variantToFeed.getId()));
 				
@@ -528,7 +525,10 @@ public class PlinkImport extends AbstractGenotypeImport {
 			if (gtCode.equals("-1/-1"))
 				gtCode = "";
 			else if (!gtCode.matches("([0-9])([0-9])*/([0-9])([0-9])*"))
+			{
+				gtCode = "";
 				LOG.warn("Ignoring invalid PLINK genotype \"" + alleles[0][i] + " " + alleles[1][i] + "\" for variant " + variantToFeed.getId() + " and individual " + sIndividual);
+			}
 
 			SampleGenotype aGT = new SampleGenotype(gtCode);
 

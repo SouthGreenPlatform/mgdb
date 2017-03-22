@@ -332,48 +332,41 @@ public class HapMapImport extends AbstractGenotypeImport {
 		else if (!variantToFeed.getType().equals(Type.SNP.toString()))
 			throw new Exception("Variant type mismatch between existing data and data to import: " + variantToFeed.getId());
 
-		List<String> knownAlleleList = new ArrayList<String>();
-		if (variantToFeed.getKnownAlleleList().size() > 0)
-			knownAlleleList.addAll(variantToFeed.getKnownAlleleList());
-		variantToFeed.setKnownAlleleList(Arrays.asList(hmFeature.getAlleles()));	/*FIXME: dodgy code (can't we loose existing alleles doing this?)*/
-
 		if (variantToFeed.getReferencePosition() == null)	// otherwise we leave it as it is (had some trouble with overridden end-sites)
 			variantToFeed.setReferencePosition(new ReferencePosition(hmFeature.getChr(), hmFeature.getStart(), (long) hmFeature.getEnd()));
 
 		VariantRunData run = new VariantRunData(new VariantRunData.VariantRunDataId(project.getId(), runName, variantToFeed.getId()));
-	
-		String[] knownAlleles = hmFeature.getAlleles();
 			
 		// genotype fields
 		for (int i=0; i<hmFeature.getGenotypes().length; i++)
 		{
-			String genotype = hmFeature.getGenotypes()[i].toUpperCase(), gtCode = "";
 			String sIndividual = hmFeature.getSampleIDs()[i];
 
-			boolean fInvalidGT = genotype.length() != 2;
-			if (!fInvalidGT)
+			String genotype = hmFeature.getGenotypes()[i].toUpperCase(), gtCode = "";
+			if (!"NN".equals(genotype) && genotype.length() == 2)
 			{
 				String allele1 = genotype.substring(0, 1);
 				String allele2 = genotype.substring(1, 2);
-				
-				int nRefAlleleCount = 0, altAlleleCount = 0;
-				
-				if (knownAlleles[0].equals(allele1))
-					nRefAlleleCount++;
-				else if (knownAlleles[1].equals(allele1))
-					altAlleleCount++;
-							
-				if (knownAlleles[0].equals(allele2))
-					nRefAlleleCount++;
-				else if (knownAlleles[1].equals(allele2))
-					altAlleleCount++;
-				
-				if (nRefAlleleCount + altAlleleCount == 2)
-					gtCode = nRefAlleleCount == 2 ? "0/0" : (nRefAlleleCount == 1 ? "0/1" : "1/1");
+
+				int firstAlleleIndex = variantToFeed.getKnownAlleleList().indexOf(allele1);
+				if (firstAlleleIndex == -1 && validNucleotides.contains(allele1))
+				{
+					firstAlleleIndex = variantToFeed.getKnownAlleleList().size();
+					variantToFeed.getKnownAlleleList().add(allele1);
+				}
+				int secondAlleleIndex = variantToFeed.getKnownAlleleList().indexOf(allele2);
+				if (secondAlleleIndex == -1 && validNucleotides.contains(allele2))
+				{
+					secondAlleleIndex = variantToFeed.getKnownAlleleList().size();
+					variantToFeed.getKnownAlleleList().add(allele2);
+				}
+				gtCode = firstAlleleIndex <= secondAlleleIndex ? (firstAlleleIndex + "/" + secondAlleleIndex) : (secondAlleleIndex + "/" + firstAlleleIndex);
 			}
-			
-			if (gtCode.length() == 0 && !"NN".equals(genotype))
-				LOG.warn("Ignoring invalid HapMap genotype \"" + gtCode + "\" for variant " + variantToFeed.getId() + " and individual " + sIndividual);
+			if (!"NN".equals(genotype) && (gtCode.length() == 0 || !gtCode.matches("([0-9])([0-9])*/([0-9])([0-9])*")))
+			{
+				gtCode = "";
+				LOG.warn("Ignoring invalid HapMap genotype \"" + genotype + "\" for variant " + variantToFeed.getId() + " and individual " + sIndividual);
+			}
 
 			SampleGenotype aGT = new SampleGenotype(gtCode);
 
