@@ -24,6 +24,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.WriteResult;
 
 import fr.cirad.mgdb.importing.base.AbstractGenotypeImport;
@@ -47,6 +48,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 	
 	private static final Logger LOG = Logger.getLogger(STDVariantImport.class);
 	
+	private int m_ploidy = 2;
 	private String m_processID;
 	
 	public STDVariantImport()
@@ -56,6 +58,13 @@ public class STDVariantImport extends AbstractGenotypeImport {
 	public STDVariantImport(String processID)
 	{
 		this();
+		m_processID = processID;
+	}
+	
+	public STDVariantImport(String processID, int nPloidy)
+	{
+		this();
+		m_ploidy = nPloidy;
 		m_processID = processID;
 	}
 
@@ -102,8 +111,11 @@ public class STDVariantImport extends AbstractGenotypeImport {
 					throw new Exception("DATASOURCE '" + sModule + "' is not supported!");
 			}
 			
+			mongoTemplate.getDb().command(new BasicDBObject("profile", 0));	// disable profiling
 			GenotypingProject project = mongoTemplate.findOne(new Query(Criteria.where(GenotypingProject.FIELDNAME_NAME).is(sProject)), GenotypingProject.class);
-			
+            if (importMode == 0 && project != null && project.getPloidyLevel() != m_ploidy)
+            	throw new Exception("Ploidy levels differ between existing (" + project.getPloidyLevel() + ") and provided (" + m_ploidy + ") data!");
+
 			if (importMode == 2) // drop database before importing
 				mongoTemplate.getDb().dropDatabase();
 			else if (project != null)
@@ -181,8 +193,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 	        	LOG.error("Error occured sorting import file", ioe);
 	        	return;
 	        }
-	
-			
+
 			// create project if necessary
 			if (project == null)
 			{	// create it
@@ -191,9 +202,9 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				project.setOrigin(1 /* SNP chip */);
 				project.setTechnology(sTechnology);
 				project.getVariantTypes().add("SNP");
+				project.setPloidyLevel(2);
 			}	
-					
-			
+
 			// import genotyping data
 			progress.addStep("Processing genotype lines by thousands");
 			progress.moveToNextStep();
@@ -255,11 +266,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 	
 			in.close();
 			sortedFile.delete();
-	
-			int ploidy = 2;	// the only one supported by STD format 
-			if (project.getPloidyLevel() < ploidy)
-				project.setPloidyLevel(ploidy);
-			
+				
             if (!project.getVariantTypes().contains(Type.SNP.toString())) {
                 project.getVariantTypes().add(Type.SNP.toString());
             }
@@ -278,13 +285,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 			progress.addStep("Preparing database for searches");
 			progress.moveToNextStep();
 			MgdbDao.prepareDatabaseForSearches(mongoTemplate);
-//			DBCollection variantColl = mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantData.class));
-//			LOG.debug("Creating index on field " + VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_ILLUMINA);
-//			variantColl.createIndex(VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_ILLUMINA);
-//			LOG.debug("Creating index on field " + VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_INTERNAL);
-//			variantColl.createIndex(VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_ILLUMINA);
-//			LOG.debug("Creating index on field " + VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_NCBI);
-//			variantColl.createIndex(VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_ILLUMINA);
 			progress.markAsComplete();
 		}
 		finally

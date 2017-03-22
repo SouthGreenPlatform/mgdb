@@ -47,6 +47,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.WriteResult;
 
 import fr.cirad.mgdb.importing.base.AbstractGenotypeImport;
@@ -149,7 +150,6 @@ public class VcfImport extends AbstractGenotypeImport {
         if (fIsBCF) {
             BCF2Codec bc = new BCF2Codec();
             reader = AbstractFeatureReader.getFeatureReader(mainFilePath, bc, false);
-
         } else {
             VCFCodec vc = new VCFCodec();
             reader = AbstractFeatureReader.getFeatureReader(mainFilePath, vc, false);
@@ -178,7 +178,22 @@ public class VcfImport extends AbstractGenotypeImport {
                 m_processID = "IMPORT__" + sModule + "__" + sProject + "__" + sRun + "__" + System.currentTimeMillis();
             }
 
+            mongoTemplate.getDb().command(new BasicDBObject("profile", 0));	// disable profiling
             GenotypingProject project = mongoTemplate.findOne(new Query(Criteria.where(GenotypingProject.FIELDNAME_NAME).is(sProject)), GenotypingProject.class);
+            
+            Iterator<VariantContext> variantIterator = reader.iterator();
+            int nPloidy = 0, i = 0;
+            while (variantIterator.hasNext() && i++ < 100 && nPloidy == 0)
+            {
+            	VariantContext vcfEntry = variantIterator.next();
+	            if (vcfEntry.getCommonInfo().getAttribute("CNV") == null)
+	            {
+	            	nPloidy = vcfEntry.getMaxPloidy(0);
+	            	LOG.info("Found ploidy level of " + nPloidy + " for " + vcfEntry.getType() + " variant " + vcfEntry.getChr() + ":" + vcfEntry.getStart());
+	            }
+            }
+            if (importMode == 0 && project != null && project.getPloidyLevel() != nPloidy)
+            	throw new Exception("Ploidy levels differ between existing (" + project.getPloidyLevel() + ") and provided (" + nPloidy + ") data!");
 
             if (importMode == 2)
                 mongoTemplate.getDb().dropDatabase(); // drop database before importing
@@ -220,7 +235,7 @@ public class VcfImport extends AbstractGenotypeImport {
                     String desc = headerLine.getDescription().replaceAll("\\(", "").replaceAll("\\)", "");
                     desc = desc.substring(0, desc.lastIndexOf("'")).substring(desc.indexOf("'"));
                     String[] fields = desc.split("\\|");
-                    for (int i = 0; i < fields.length; i++) {
+                    for (i = 0; i<fields.length; i++) {
                         String trimmedField = fields[i].trim();
                         if ("Gene_Name".equals(trimmedField)) {
                             geneNameAnnotationPos = i;
@@ -243,6 +258,7 @@ public class VcfImport extends AbstractGenotypeImport {
                 project.setName(sProject);
                 project.setOrigin(2 /* Sequencing */);
                 project.setTechnology(sTechnology);
+                project.setPloidyLevel(nPloidy);
             }
 
             mongoTemplate.save(new DBVCFHeader(new VcfHeaderId(project.getId(), sRun), header));
@@ -260,12 +276,12 @@ public class VcfImport extends AbstractGenotypeImport {
             ArrayList<VariantRunData> unsavedRuns = new ArrayList<VariantRunData>();
             HashMap<String /*individual*/, SampleId> previouslyCreatedSamples = new HashMap<String /*individual*/, SampleId>();
             HashMap<String /*individual*/, Comparable> phasingGroups = new HashMap<String /*individual*/, Comparable>();
-            Iterator<VariantContext> it = reader.iterator();
+            variantIterator = reader.iterator();
             progress.addStep("Processing variant lines");
             progress.moveToNextStep();
             boolean fAtLeastOneIDProvided = false;
-            while (it.hasNext()) {
-                VariantContext vcfEntry = it.next();
+            while (variantIterator.hasNext()) {
+                VariantContext vcfEntry = variantIterator.next();
                 if (!vcfEntry.isVariant())
                     continue; // skip non-variant positions				
 
@@ -317,14 +333,6 @@ public class VcfImport extends AbstractGenotypeImport {
                         if (count > 0) {
                             info = count + " lines processed"/*"(" + (System.currentTimeMillis() - before) / 1000 + ")\t"*/;
                             LOG.debug(info);
-                        }
-                    }
-
-                    if (vcfEntry.getCommonInfo().getAttribute("CNV") == null) {
-                        int ploidy = vcfEntry.getMaxPloidy(0);
-                        if (project.getPloidyLevel() < ploidy) {
-                            project.setPloidyLevel(ploidy);
-                            LOG.info("Found ploidy level of " + ploidy + " for " + vcfEntry.getType() + " variant " + vcfEntry.getChr() + ":" + vcfEntry.getStart());
                         }
                     }
 

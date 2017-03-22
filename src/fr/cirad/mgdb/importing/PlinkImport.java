@@ -173,7 +173,9 @@ public class PlinkImport extends AbstractGenotypeImport {
 
 			mongoTemplate.getDb().command(new BasicDBObject("profile", 0));	// disable profiling
 			GenotypingProject project = mongoTemplate.findOne(new Query(Criteria.where(GenotypingProject.FIELDNAME_NAME).is(sProject)), GenotypingProject.class);
-
+            if (importMode == 0 && project != null && project.getPloidyLevel() != 2)
+            	throw new Exception("Ploidy levels differ between existing (" + project.getPloidyLevel() + ") and provided (" + 2 + ") data!");
+            
 			if (importMode == 2) // drop database before importing
 				mongoTemplate.getDb().dropDatabase();
 			else if (project != null)
@@ -210,6 +212,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 				project.setName(sProject);
 				project.setOrigin(2 /* Sequencing */);
 				project.setTechnology(sTechnology);
+				project.setPloidyLevel(2);
 			}
 
 			HashMap<String, Comparable> existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate);			
@@ -373,10 +376,6 @@ public class PlinkImport extends AbstractGenotypeImport {
 								nPreviousProgressPercentage = nProgressPercentage;
 							}
 						}
-
-						int ploidy = 2;	// the only one supported by PLINK format 
-						if (project.getPloidyLevel() < ploidy)
-							project.setPloidyLevel(ploidy);
 
 						if (variant.getReferencePosition() != null && !project.getSequences().contains(variant.getReferencePosition().getSequence()))
 							project.getSequences().add(variant.getReferencePosition().getSequence());

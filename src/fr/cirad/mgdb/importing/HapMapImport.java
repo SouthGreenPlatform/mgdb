@@ -157,6 +157,8 @@ public class HapMapImport extends AbstractGenotypeImport {
 				m_processID = "IMPORT__" + sModule + "__" + sProject + "__" + sRun + "__" + System.currentTimeMillis();
 
 			GenotypingProject project = mongoTemplate.findOne(new Query(Criteria.where(GenotypingProject.FIELDNAME_NAME).is(sProject)), GenotypingProject.class);
+            if (importMode == 0 && project != null && project.getPloidyLevel() != 2)
+            	throw new Exception("Ploidy levels differ between existing (" + project.getPloidyLevel() + ") and provided (" + 2 + ") data!");
 
 			if (importMode == 2) // drop database before importing
 				mongoTemplate.getDb().dropDatabase();
@@ -194,6 +196,7 @@ public class HapMapImport extends AbstractGenotypeImport {
 				project.setName(sProject);
 				project.setOrigin(2 /* Sequencing */);
 				project.setTechnology(sTechnology);
+				project.setPloidyLevel(2);
 			}
 
 			HashMap<String, Comparable> existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate);		
@@ -258,10 +261,6 @@ public class HapMapImport extends AbstractGenotypeImport {
 							LOG.debug(info);
 						}
 					}
-
-					int ploidy = 2;	// the only one supported by HapMap format 
-					if (project.getPloidyLevel() < ploidy)
-						project.setPloidyLevel(ploidy);
 
 					if (!project.getSequences().contains(hmFeature.getChr()))
 						project.getSequences().add(hmFeature.getChr());
