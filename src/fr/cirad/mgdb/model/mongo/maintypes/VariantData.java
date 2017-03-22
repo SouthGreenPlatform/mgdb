@@ -166,22 +166,28 @@ public class VariantData
 	@Field(SECTION_ADDITIONAL_INFO)
 	private HashMap<String, Comparable> additionalInfo = null;
 
-    public static int[] fixAdFieldValue(int[] importedAD, List<String> knownAlleles, List<? extends Comparable> importedAlleles)
+	static public int[] fixAdFieldValue(int[] importedAD, List<? extends Comparable> importedAlleles, List<String> knownAlleles)
     {
-    	List<String> allelesAsStrings = importedAlleles.stream().filter(allele -> Allele.class.isAssignableFrom(allele.getClass()))
+    	List<String> importedAllelesAsStrings = importedAlleles.stream().filter(allele -> Allele.class.isAssignableFrom(allele.getClass()))
     				.map(Allele.class::cast)
     				.map(allele -> allele.getBaseString()).collect(Collectors.toList());
     	
-    	if (allelesAsStrings.isEmpty())
-    		allelesAsStrings.addAll((Collection<? extends String>) importedAlleles);
+    	if (importedAllelesAsStrings.isEmpty())
+    		importedAllelesAsStrings.addAll((Collection<? extends String>) importedAlleles);
     	
+    	if (Arrays.equals(knownAlleles.toArray(), importedAllelesAsStrings.toArray()))
+    	{
+//    		System.out.println("AD: no fix needed for " + Helper.arrayToCsv(", ", importedAD));
+    		return importedAD;
+    	}
+
     	HashMap<Integer, Integer> knownAlleleToImportedAlleleIndexMap = new HashMap<>();
     	for (int i=0; i<importedAlleles.size(); i++)
     	{
-    		String allele = allelesAsStrings.get(i);
+    		String allele = importedAllelesAsStrings.get(i);
     		int knownAlleleIndex = knownAlleles.indexOf(allele);
     		if (knownAlleleToImportedAlleleIndexMap.get(knownAlleleIndex) == null)
-    				knownAlleleToImportedAlleleIndexMap.put(knownAlleleIndex, i);
+    			knownAlleleToImportedAlleleIndexMap.put(knownAlleleIndex, i);
     	}
     	int[] adToStore = new int[knownAlleles.size()];
     	for (int i=0; i<adToStore.length; i++)
@@ -189,10 +195,145 @@ public class VariantData
     		Integer importedAlleleIndex = knownAlleleToImportedAlleleIndexMap.get(i);
     		adToStore[i] = importedAlleleIndex == null ? 0 : importedAD[importedAlleleIndex];
     	}
-		System.out.println(Helper.arrayToCsv(", ", importedAD) + " -> " + Helper.arrayToCsv(", ", adToStore));
+//		System.out.println("AD: " + Helper.arrayToCsv(", ", importedAD) + " -> " + Helper.arrayToCsv(", ", adToStore));
 
     	return adToStore;
     }
+
+	static public int[] fixPlFieldValue(int[] importedPL, int ploidy, List<? extends Comparable> importedAlleles, List<String> knownAlleles)
+	{
+    	List<String> importedAllelesAsStrings = importedAlleles.stream().filter(allele -> Allele.class.isAssignableFrom(allele.getClass()))
+				.map(Allele.class::cast)
+				.map(allele -> allele.getBaseString()).collect(Collectors.toList());
+    	
+    	if (importedAllelesAsStrings.isEmpty())
+    		importedAllelesAsStrings.addAll((Collection<? extends String>) importedAlleles);
+	
+    	if (Arrays.equals(knownAlleles.toArray(), importedAllelesAsStrings.toArray()))
+    	{
+//    		System.out.println("PL: no fix needed for " + Helper.arrayToCsv(", ", importedPL));
+    		return importedPL;
+    	}
+    	
+    	HashMap<Integer, Integer> knownAlleleToImportedAlleleIndexMap = new HashMap<>();
+    	for (int i=0; i<importedAlleles.size(); i++)
+    	{
+    		String allele = importedAllelesAsStrings.get(i);
+    		int knownAlleleIndex = knownAlleles.indexOf(allele);
+    		if (knownAlleleToImportedAlleleIndexMap.get(knownAlleleIndex) == null)
+    			knownAlleleToImportedAlleleIndexMap.put(knownAlleleIndex, i);
+    	}
+    	
+    	int[] plToStore = new int[bcf_ap2g(knownAlleles.size(), ploidy)];
+    	for (int i=0; i<plToStore.length; i++)
+    	{
+    		int[] genotype = bcf_ip2g(i, ploidy);
+    		for (int j=0; j<genotype.length; j++)	// convert genotype to match the provided allele ordering
+    		{
+    			Integer importedAllele = knownAlleleToImportedAlleleIndexMap.get(genotype[j]);
+    			if (importedAllele == null)
+    			{
+    				genotype = null;
+    				break;	// if any allele is not part of the imported ones then the whole genotype is not represented
+    			}
+    			else
+    				genotype[j] = importedAllele;
+    		}
+    		if (genotype != null)
+    			Arrays.sort(genotype);
+    		
+    		plToStore[i] = genotype == null ? Integer.MAX_VALUE : importedPL[(int) bcf_g2i(genotype, ploidy)];
+    	}
+//    	System.out.println("PL: " + Helper.arrayToCsv(", ", importedPL) + " -> " + Helper.arrayToCsv(", ", plToStore));
+    	
+		return plToStore;
+	}
+	
+	/**
+	 * Gets number of genotypes from number of alleles and ploidy.
+	 * Translated from original C++ code that was part of the project https://github.com/atks/vt
+	 */
+	static public int bcf_ap2g(int no_allele, int no_ploidy)
+	{
+		if (no_ploidy==1 || no_allele<=1)
+	        return no_allele;
+	    else if (no_ploidy==2)
+	        return (((no_allele+1)*(no_allele))>>1);
+	    else
+	        return (int) Helper.choose(no_ploidy+no_allele-1, no_allele-1);
+	}
+		
+	/**
+	 * Gets index of a genotype of n ploidy.
+	 * Translated from original C++ code that was part of the project https://github.com/atks/vt
+	 */
+	static public int bcf_g2i(int[] g, int n)
+	{
+	    if (n==1)
+	        return g[0];
+	    if (n==2)
+	        return g[0] + (((g[1]+1)*(g[1]))>>1);
+	    else
+	    {
+	    	int index = 0;
+	        for (int i=0; i<n; ++i)
+	            index += bcf_ap2g(g[i], i+1);
+	        return index;
+	    }
+	}
+	
+	/**
+	 * Gets genotype from genotype index and ploidy.
+	 * Translated from original C++ code that was part of the project https://github.com/atks/vt
+	 */
+	static public int[] bcf_ip2g(int genotype_index, int no_ploidy)
+	{
+	    int[] genotype = new int[no_ploidy];
+	    int pth = no_ploidy;
+	    int max_allele_index = genotype_index;
+	    int leftover_genotype_index = genotype_index;
+	    while (pth>0)
+	    {
+	        for (int allele_index=0; allele_index <= max_allele_index; ++allele_index)
+	        {
+	            double i = Helper.choose(pth+allele_index-1, pth);
+	            if (i>=leftover_genotype_index || allele_index==max_allele_index)
+	            {
+	                if (i>leftover_genotype_index)
+	                	--allele_index;
+	                leftover_genotype_index -= Helper.choose(pth+allele_index-1, pth);
+	                --pth;
+	                max_allele_index = allele_index;
+	                genotype[pth] = allele_index;
+	                break;                
+	            }
+	        }
+	    }
+	    return genotype;
+	}
+  
+//  static public List<Integer> getAlleles(final int PLindex, final int ploidy) {
+//      if ( ploidy == 2 ) { // diploid
+//          final GenotypeLikelihoodsAllelePair pair = getAllelePair(PLindex);
+//          return Arrays.asList(pair.alleleIndex1, pair.alleleIndex2);
+//      } else { // non-diploid
+//          if (!anyploidPloidyToPLIndexToAlleleIndices.containsKey(ploidy))
+//              throw new IllegalStateException("Must initialize the cache of allele anyploid indices for ploidy " + ploidy);
+//
+//          if (PLindex < 0 || PLindex >= anyploidPloidyToPLIndexToAlleleIndices.get(ploidy).size()) {
+//              final String msg = "The PL index " + PLindex + " does not exist for " + ploidy + " ploidy, " +
+//                      (PLindex < 0 ? "cannot have a negative value." : "initialized the cache of allele anyploid indices with the incorrect number of alternate alleles.");
+//              throw new IllegalStateException(msg);
+//          }
+//
+//          return anyploidPloidyToPLIndexToAlleleIndices.get(ploidy).get(PLindex);
+//      }
+//}
+	
+//	static public int likelihoodGtIndex(int j, int k)
+//    {
+//    	return (k*(k+1)/2)+j;
+//    }
     
 	/**
 	 * Instantiates a new variant data.
@@ -546,6 +687,7 @@ public class VariantData
 				if (genotypeFilters != null && genotypeFilters.length() > 0)
 					gb.filter(genotypeFilters);
 				
+				List<String> alleleListAtImportTimeIfDifferentFromNow = null;
 				for (String key : sampleGenotype.getAdditionalInfo().keySet())
 					if (GT_FIELD_GQ.equals(key))
 					{
@@ -574,7 +716,10 @@ public class VariantData
 						{
 							int[] adArray = Helper.csvToIntArray(ad);
 							if (knownAlleleList.size() > adArray.length)
-								adArray = VariantData.fixAdFieldValue(adArray, knownAlleleList, knownAlleleList.subList(0, adArray.length));
+							{
+								alleleListAtImportTimeIfDifferentFromNow = knownAlleleList.subList(0, adArray.length);
+								adArray = VariantData.fixAdFieldValue(adArray, alleleListAtImportTimeIfDifferentFromNow, knownAlleleList);
+							}
 							gb.AD(adArray);
 						}
 						else
@@ -584,7 +729,12 @@ public class VariantData
 					{
 						String pl = (String) sampleGenotype.getAdditionalInfo().get(key);
 						if (pl != null)
-							gb.PL(Helper.csvToIntArray(pl));
+						{
+							int[] plArray = Helper.csvToIntArray(pl);
+							if (alleleListAtImportTimeIfDifferentFromNow != null)
+								plArray = VariantData.fixPlFieldValue(plArray, individualAlleles.size(), alleleListAtImportTimeIfDifferentFromNow, knownAlleleList);
+							gb.PL(plArray);
+						}
 						else
 							gb.noPL();
 					}

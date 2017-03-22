@@ -58,11 +58,15 @@ public class Helper {
             LOG.error("Unable to find MD5 algorithm", e);
         }
     }
-    
-	static public long choose(int n, int k)
-	{
-		return MathUtils.factorial(n) / (MathUtils.factorial(k) * MathUtils.factorial(n - k));
-	}
+
+	static public double choose(double n, double k) {
+        double r = 1;
+        for (double i = 0; i < k; i++) {
+            r *= (n - i); 
+            r /= (i + 1); 
+        }  
+        return r;
+    }
 
     /**
      * Convert string array to number array.

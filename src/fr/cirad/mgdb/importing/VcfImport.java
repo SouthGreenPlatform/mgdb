@@ -418,9 +418,7 @@ public class VcfImport extends AbstractGenotypeImport {
         variantToFeed.setKnownAlleleList(knownAlleleList);
 
         if (variantToFeed.getReferencePosition() == null) // otherwise we leave it as it is (had some trouble with overridden end-sites)
-        {
             variantToFeed.setReferencePosition(new ReferencePosition(vc.getContig(), vc.getStart(), (long) vc.getEnd()));
-        }
 
         VariantRunData run = new VariantRunData(new VariantRunData.VariantRunDataId(project.getId(), runName, variantToFeed.getId()));
 
@@ -555,28 +553,18 @@ public class VcfImport extends AbstractGenotypeImport {
             if (genotype.hasDP()) {
                 aGT.getAdditionalInfo().put(VariantData.GT_FIELD_DP, genotype.getDP());
             }
+            boolean fSkipPlFix = false;	// for performance
             if (genotype.hasAD()) {
-            	int[] adArray = genotype.getAD();
-            	boolean adNeedsFixing = false;
-            	if (knownAlleleList.size() > adArray.length)
-            		adNeedsFixing = true;
-            	else
-            	{
-                	List<String> importedAllelesAsStrings = vc.getAlleles().stream().filter(allele -> Allele.class.isAssignableFrom(allele.getClass()))
-            				.map(Allele.class::cast)
-            				.map(allele -> allele.getBaseString()).collect(Collectors.toList());
-                	if (Arrays.equals(knownAlleleList.toArray(), importedAllelesAsStrings.toArray()))
-                		adNeedsFixing = true;
-            	}
-            	if (adNeedsFixing)
-            		adArray = VariantData.fixAdFieldValue(adArray, knownAlleleList, vc.getAlleles());
-            	else
-            		System.out.println("no fix needed for " + variantToFeed.getReferencePosition().getStartSite() + " / " + sIndividual + " (" + genotype.getGenotypeString(true));
-
+            	int[] adArray = genotype.getAD(), originalAdArray = adArray;
+            	adArray = VariantData.fixAdFieldValue(adArray, vc.getAlleles(), knownAlleleList);
+            	if (originalAdArray == adArray)
+            		fSkipPlFix = true;	// if AD was correct then PL is too
                 aGT.getAdditionalInfo().put(VariantData.GT_FIELD_AD, Helper.arrayToCsv(",", adArray));
             }
-            if (genotype.hasPL()) {
-                aGT.getAdditionalInfo().put(VariantData.GT_FIELD_PL, Helper.arrayToCsv(",", genotype.getPL()));
+            if (!fSkipPlFix && genotype.hasPL()) {
+            	int[] plArray = genotype.getPL();
+            	plArray = VariantData.fixPlFieldValue(plArray, genotype.getPloidy(), vc.getAlleles(), knownAlleleList);
+                aGT.getAdditionalInfo().put(VariantData.GT_FIELD_PL, Helper.arrayToCsv(",", plArray));
             }
             Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
             for (String sAttrName : extendedAttributes.keySet()) {
@@ -607,45 +595,5 @@ public class VcfImport extends AbstractGenotypeImport {
 //               printGenotypes(a+1, k, s);
 //           }
 //       }
-//    }
-
-//    public static int[] fixAdFieldValue(int[] importedAD, List<String> knownAlleles, List<Allele> importedAlleles)
-    
-//    
-//    public static int[] fixPlFieldValue(int[] storedPL, List<String> knownAlleles, List<String> exportedAlleles, int ploidy, String gtCode)
-//    {
-//    	
-//    }
-    
-    
-    
-//    public static int[] bcf_ip2g(int genotype_index, int no_ploidy)
-//    {
-//      int[] genotype = new int[] {no_ploidy, 0};
-//      int pth = no_ploidy;
-//      int max_allele_index = genotype_index;
-//      int leftover_genotype_index = genotype_index;
-//      while (pth>0)
-//      {
-//          for (int allele_index=0; allele_index <= max_allele_index; ++allele_index)
-//          {
-//              long i = Helper.choose(pth+allele_index-1, pth);
-//              if (i>=leftover_genotype_index)
-//              {
-//                  if (i>leftover_genotype_index) --allele_index;
-//                  leftover_genotype_index -= Helper.choose(pth+allele_index-1, pth);
-//                  --pth;
-//                  max_allele_index = allele_index;
-//                  genotype[pth] = allele_index;
-//                  break;                
-//              }
-//          }
-//      }
-//      return genotype;
-//    }
-    
-//    public static int likelihoodGtIndex(int j, int k)
-//    {
-//    	return (k*(k+1)/2)+j;
 //    }
 }
