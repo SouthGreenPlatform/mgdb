@@ -196,8 +196,8 @@ public class HapMapImport extends AbstractGenotypeImport {
 				project.setName(sProject);
 				project.setOrigin(2 /* Sequencing */);
 				project.setTechnology(sTechnology);
-				project.setPloidyLevel(2);
 			}
+			project.setPloidyLevel(2);
 
 			HashMap<String, Comparable> existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate);		
 			if (!project.getVariantTypes().contains(Type.SNP.toString()))

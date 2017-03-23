@@ -202,8 +202,8 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				project.setOrigin(1 /* SNP chip */);
 				project.setTechnology(sTechnology);
 				project.getVariantTypes().add("SNP");
-				project.setPloidyLevel(2);
 			}	
+			project.setPloidyLevel(2);
 
 			// import genotyping data
 			progress.addStep("Processing genotype lines by thousands");

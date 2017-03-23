@@ -258,8 +258,8 @@ public class VcfImport extends AbstractGenotypeImport {
                 project.setName(sProject);
                 project.setOrigin(2 /* Sequencing */);
                 project.setTechnology(sTechnology);
-                project.setPloidyLevel(nPloidy);
             }
+            project.setPloidyLevel(nPloidy);
 
             mongoTemplate.save(new DBVCFHeader(new VcfHeaderId(project.getId(), sRun), header));
 
@@ -569,9 +569,10 @@ public class VcfImport extends AbstractGenotypeImport {
             		fSkipPlFix = true;	// if AD was correct then PL is too
                 aGT.getAdditionalInfo().put(VariantData.GT_FIELD_AD, Helper.arrayToCsv(",", adArray));
             }
-            if (!fSkipPlFix && genotype.hasPL()) {
+            if (genotype.hasPL()) {
             	int[] plArray = genotype.getPL();
-            	plArray = VariantData.fixPlFieldValue(plArray, genotype.getPloidy(), vc.getAlleles(), knownAlleleList);
+            	if (!fSkipPlFix)
+            		plArray = VariantData.fixPlFieldValue(plArray, genotype.getPloidy(), vc.getAlleles(), knownAlleleList);
                 aGT.getAdditionalInfo().put(VariantData.GT_FIELD_PL, Helper.arrayToCsv(",", plArray));
             }
             Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
