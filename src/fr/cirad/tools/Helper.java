@@ -30,12 +30,10 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.math.util.MathUtils;
 import org.apache.log4j.Logger;
 
 import com.mongodb.DBObject;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class Helper.
  */

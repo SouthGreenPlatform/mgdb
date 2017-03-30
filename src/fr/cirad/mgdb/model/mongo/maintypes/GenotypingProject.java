@@ -555,4 +555,16 @@ public class GenotypingProject {
 
         return false;
     }
+    
+    public void clearEverythingExceptMetaData()
+    {
+		getRuns().clear();
+		getAlleleCounts().clear();
+		getEffectAnnotations().clear();
+		getVariantTypes().clear();
+		getSequences().clear();
+		setPloidyLevel(0);
+		getAdditionalInfo().clear();
+		getSamples().clear();
+    }
 }

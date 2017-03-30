@@ -29,10 +29,12 @@ import com.mongodb.WriteResult;
 
 import fr.cirad.mgdb.importing.base.AbstractGenotypeImport;
 import fr.cirad.mgdb.model.mongo.maintypes.AutoIncrementCounter;
+import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader;
 import fr.cirad.mgdb.model.mongo.maintypes.GenotypingProject;
 import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData;
+import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader.VcfHeaderId;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData.VariantRunDataId;
 import fr.cirad.mgdb.model.mongo.subtypes.GenotypingSample;
 import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
@@ -120,24 +122,37 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				mongoTemplate.getDb().dropDatabase();
 			else if (project != null)
 			{
-				if (importMode == 1) // empty project data before importing
-				{
-					WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId())), VariantRunData.class);
-					String info = wr.getN() + " variantRunData records removed";
-					LOG.info(info);
+				if (importMode == 1 || (project != null && project.getRuns().size() == 1 && project.getRuns().get(0).equals(sRun)))
+				{	// empty project data before importing
+					WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId())), DBVCFHeader.class);
+					LOG.info(wr.getN() + " records removed from vcf_header");
+					wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId())), VariantRunData.class);
+					LOG.info(wr.getN() + " records removed from variantRunData");
+					wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
+					project.clearEverythingExceptMetaData();
+				}
+				else
+				{	// empty run data before importing
+                    WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId()).and("_id." + VcfHeaderId.FIELDNAME_RUN).is(sRun)), DBVCFHeader.class);
+					LOG.info(wr.getN() + " records removed from vcf_header");
+                    if (project.getRuns().contains(sRun))
+                    {
+                    	LOG.info("Cleaning up existing run's data");
+						List<Criteria> crits = new ArrayList<Criteria>();
+						crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId()));
+						crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_RUNNAME).is(sRun));
+						crits.add(Criteria.where(VariantRunData.FIELDNAME_SAMPLEGENOTYPES).exists(true));
+						wr = mongoTemplate.remove(new Query(new Criteria().andOperator(crits.toArray(new Criteria[crits.size()]))), VariantRunData.class);
+						String info = wr.getN() + " records removed from variantRunData";
+						LOG.info(info);
+                    }
 					mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
 				}
-				else // empty run data before importing
-				{
-					List<Criteria> crits = new ArrayList<Criteria>();
-					crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId()));
-					crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_RUNNAME).is(sRun));
-					crits.add(Criteria.where(VariantRunData.FIELDNAME_SAMPLEGENOTYPES).exists(true));
-					WriteResult wr = mongoTemplate.remove(new Query(new Criteria().andOperator(crits.toArray(new Criteria[crits.size()]))), VariantRunData.class);
-					String info = wr.getN() + " variantRunData records removed";
-					LOG.info(info);
-					mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
-				}
+                if (mongoTemplate.count(null, VariantRunData.class) == 0 && doesDatabaseSupportImportingUnknownVariants(sModule))
+                {	// if there is no genotyping data left and we are not working on a fixed list of variants then any other data is irrelevant
+                    mongoTemplate.getDb().dropDatabase();
+//                    project = null;
+                }
 			}
 			
 			progress.addStep("Reading marker IDs");

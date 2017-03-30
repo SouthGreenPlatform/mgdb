@@ -140,9 +140,8 @@ public class VcfImport extends AbstractGenotypeImport {
     public void importToMongo(boolean fIsBCF, String sModule, String sProject, String sRun, String sTechnology, String mainFilePath, int importMode) throws Exception {
         long before = System.currentTimeMillis();
         ProgressIndicator progress = ProgressIndicator.get(m_processID);
-        if (progress == null) {
+        if (progress == null)
             progress = new ProgressIndicator(m_processID, new String[]{"Initializing import"});	// better to add it straight-away so the JSP doesn't get null in return when it checks for it (otherwise it will assume the process has ended)
-        }
         progress.setPercentageEnabled(false);
 
         FeatureReader<VariantContext> reader;
@@ -199,17 +198,17 @@ public class VcfImport extends AbstractGenotypeImport {
                 mongoTemplate.getDb().dropDatabase(); // drop database before importing
             else if (project != null)
             {
-                if (importMode == 1) // empty project data before importing
-                {
-                    WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId())), DBVCFHeader.class);
-                    LOG.info(wr.getN() + " records removed from vcf_header");
-                    wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId())), VariantRunData.class);
-                    LOG.info(wr.getN() + " records removed from variantRunData");
-                    wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
-                    project.getRuns().clear();
-                }
-                else // empty run data before importing
-                {
+				if (importMode == 1 || (project.getRuns().size() == 1 && project.getRuns().get(0).equals(sRun)))
+				{	// empty project data before importing
+					WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId())), DBVCFHeader.class);
+					LOG.info(wr.getN() + " records removed from vcf_header");
+					wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId())), VariantRunData.class);
+					LOG.info(wr.getN() + " records removed from variantRunData");
+					wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
+					project.clearEverythingExceptMetaData();
+				}
+				else
+				{	// empty run data before importing
                     WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId()).and("_id." + VcfHeaderId.FIELDNAME_RUN).is(sRun)), DBVCFHeader.class);
                     LOG.info(wr.getN() + " records removed from vcf_header");
                     if (project.getRuns().contains(sRun))
@@ -225,7 +224,10 @@ public class VcfImport extends AbstractGenotypeImport {
                     wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);	// we are going to re-write it
                 }
                 if (mongoTemplate.count(null, VariantRunData.class) == 0 && doesDatabaseSupportImportingUnknownVariants(sModule))
-                    mongoTemplate.getDb().dropDatabase(); // if there is no genotyping data left and we are not working on a fixed list of variants then any other data is irrelevant
+                {	// if there is no genotyping data left and we are not working on a fixed list of variants then any other data is irrelevant
+                    mongoTemplate.getDb().dropDatabase();
+//                    project = null;
+                }
             }
 
             VCFHeader header = (VCFHeader) reader.getHeader();
@@ -394,7 +396,7 @@ public class VcfImport extends AbstractGenotypeImport {
      *
      * @param mongoTemplate the mongo template
      * @param variantToFeed the variant to feed
-     * @param vc the vc
+     * @param vc the VariantContext
      * @param project the project
      * @param runName the run name
      * @param phasingGroup the phasing group
