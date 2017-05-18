@@ -337,13 +337,3 @@ public class Helper {
         }
         return buf.toString();
     }
-/**
- * parse mongodb Srping permissions
- * ROLE_USER_mgdb_rice will return mgdb_rice
- * @param subline
- * @return 
- */
-    public static String parseSpringUserDB(String subline) {
-        return subline.substring(StringUtils.ordinalIndexOf(subline, "_", 2) + 1);
-    }
-}
