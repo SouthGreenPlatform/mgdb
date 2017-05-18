@@ -428,11 +428,11 @@ public class MongoTemplateManager implements ApplicationContextAware {
         return publicDatabases;
     }
 
-    static public void dropCollection(String processId) {
+    static public void dropAllTempColls(String token) {
         DBCollection tmpColl;
-        String tempCollName = MongoTemplateManager.TEMP_EXPORT_PREFIX + Helper.convertToMD5(processId);
+        String tempCollName = MongoTemplateManager.TEMP_EXPORT_PREFIX + Helper.convertToMD5(token);
         for (String module : MongoTemplateManager.getTemplateMap().keySet()) {
-            // drop all tmp collection associate to this processId
+            // drop all temp collections associated to this token
             tmpColl = templateMap.get(module).getCollection(tempCollName);
             tmpColl.drop();
         }
