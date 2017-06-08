@@ -429,6 +429,9 @@ public class MongoTemplateManager implements ApplicationContextAware {
     }
 
     static public void dropAllTempColls(String token) {
+    	if (token == null)
+    		return;
+    	
         DBCollection tmpColl;
         String tempCollName = MongoTemplateManager.TEMP_EXPORT_PREFIX + Helper.convertToMD5(token);
         for (String module : MongoTemplateManager.getTemplateMap().keySet()) {
