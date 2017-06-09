@@ -233,7 +233,10 @@ public class HapMapImport extends AbstractGenotypeImport {
 					}
 					VariantData variant = variantId == null ? null : mongoTemplate.findById(variantId, VariantData.class);
 					if (variant == null)
-						variant = new VariantData(hmFeature.getName() != null && hmFeature.getName().length() > 0 ? hmFeature.getName() : new ObjectId());
+					{
+						Comparable providedVariantId = hmFeature.getName() != null && hmFeature.getName().length() > 0 ? hmFeature.getName() : new ObjectId();
+						variant = new VariantData(providedVariantId instanceof String && ObjectId.isValid((String)providedVariantId) ? new ObjectId((String) providedVariantId) : providedVariantId);
+					}
 					unsavedVariants.add(variant);
 					VariantRunData runToSave = addHapMapDataToVariant(mongoTemplate, variant, hmFeature, project, sRun, previouslyCreatedSamples);
 					if (!unsavedRuns.contains(runToSave))
