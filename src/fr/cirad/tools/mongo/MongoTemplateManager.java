@@ -59,6 +59,7 @@ import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
+import com.mongodb.WriteConcern;
 
 import fr.cirad.tools.AppConfig;
 import fr.cirad.tools.Helper;
@@ -165,6 +166,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
         for (String sModule : templateMap.keySet()) {
 
             MongoTemplate mongoTemplate = templateMap.get(sModule);
+            mongoTemplate.getDb().setWriteConcern(WriteConcern.ACKNOWLEDGED);
             String connectPoint = mongoTemplate.getDb().getMongo().getConnectPoint();
             if (authorizedCleanupServers == null || authorizedCleanupServers.contains(connectPoint)) {
                 for (String collName : mongoTemplate.getCollectionNames()) {
