@@ -52,6 +52,13 @@ public interface IExportHandler
 	public String getExportFormatDescription();
 	
 	/**
+	 * Gets the export file extension.
+	 *
+	 * @return the export file extension.
+	 */
+	public String getExportFileExtension();
+	
+	/**
 	 * Gets the step list.
 	 *
 	 * @return the step list

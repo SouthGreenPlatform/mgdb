@@ -24,14 +24,17 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.WriteResult;
 
 import fr.cirad.mgdb.importing.base.AbstractGenotypeImport;
 import fr.cirad.mgdb.model.mongo.maintypes.AutoIncrementCounter;
+import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader;
 import fr.cirad.mgdb.model.mongo.maintypes.GenotypingProject;
 import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData;
+import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader.VcfHeaderId;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData.VariantRunDataId;
 import fr.cirad.mgdb.model.mongo.subtypes.GenotypingSample;
 import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
@@ -47,6 +50,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 	
 	private static final Logger LOG = Logger.getLogger(STDVariantImport.class);
 	
+	private int m_ploidy = 2;
 	private String m_processID;
 	
 	public STDVariantImport()
@@ -56,6 +60,13 @@ public class STDVariantImport extends AbstractGenotypeImport {
 	public STDVariantImport(String processID)
 	{
 		this();
+		m_processID = processID;
+	}
+	
+	public STDVariantImport(String processID, int nPloidy)
+	{
+		this();
+		m_ploidy = nPloidy;
 		m_processID = processID;
 	}
 
@@ -102,32 +113,46 @@ public class STDVariantImport extends AbstractGenotypeImport {
 					throw new Exception("DATASOURCE '" + sModule + "' is not supported!");
 			}
 			
-//			if (MongoTemplateManager.getAppConfig().get("allow_importing_unknown_variants") == "0")
-//				allowImportingUnknownVariants(false);
+			mongoTemplate.getDb().command(new BasicDBObject("profile", 0));	// disable profiling
 			GenotypingProject project = mongoTemplate.findOne(new Query(Criteria.where(GenotypingProject.FIELDNAME_NAME).is(sProject)), GenotypingProject.class);
-			
+            if (importMode == 0 && project != null && project.getPloidyLevel() != m_ploidy)
+            	throw new Exception("Ploidy levels differ between existing (" + project.getPloidyLevel() + ") and provided (" + m_ploidy + ") data!");
+
 			if (importMode == 2) // drop database before importing
 				mongoTemplate.getDb().dropDatabase();
 			else if (project != null)
 			{
-				if (importMode == 1) // empty project data before importing
-				{
-					WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId())), VariantRunData.class);
-					String info = wr.getN() + " variantRunData records removed";
-					LOG.info(info);
+				if (importMode == 1 || (project != null && project.getRuns().size() == 1 && project.getRuns().get(0).equals(sRun)))
+				{	// empty project data before importing
+					WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId())), DBVCFHeader.class);
+					LOG.info(wr.getN() + " records removed from vcf_header");
+					wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId())), VariantRunData.class);
+					LOG.info(wr.getN() + " records removed from variantRunData");
+					wr = mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
+					project.clearEverythingExceptMetaData();
+				}
+				else
+				{	// empty run data before importing
+                    WriteResult wr = mongoTemplate.remove(new Query(Criteria.where("_id." + VcfHeaderId.FIELDNAME_PROJECT).is(project.getId()).and("_id." + VcfHeaderId.FIELDNAME_RUN).is(sRun)), DBVCFHeader.class);
+					LOG.info(wr.getN() + " records removed from vcf_header");
+                    if (project.getRuns().contains(sRun))
+                    {
+                    	LOG.info("Cleaning up existing run's data");
+						List<Criteria> crits = new ArrayList<Criteria>();
+						crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId()));
+						crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_RUNNAME).is(sRun));
+						crits.add(Criteria.where(VariantRunData.FIELDNAME_SAMPLEGENOTYPES).exists(true));
+						wr = mongoTemplate.remove(new Query(new Criteria().andOperator(crits.toArray(new Criteria[crits.size()]))), VariantRunData.class);
+						String info = wr.getN() + " records removed from variantRunData";
+						LOG.info(info);
+                    }
 					mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
 				}
-				else // empty run data before importing
-				{
-					List<Criteria> crits = new ArrayList<Criteria>();
-					crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_PROJECT_ID).is(project.getId()));
-					crits.add(Criteria.where("_id." + VariantRunData.VariantRunDataId.FIELDNAME_RUNNAME).is(sRun));
-					crits.add(Criteria.where(VariantRunData.FIELDNAME_SAMPLEGENOTYPES).exists(true));
-					WriteResult wr = mongoTemplate.remove(new Query(new Criteria().andOperator(crits.toArray(new Criteria[crits.size()]))), VariantRunData.class);
-					String info = wr.getN() + " variantRunData records removed";
-					LOG.info(info);
-					mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
-				}
+                if (mongoTemplate.count(null, VariantRunData.class) == 0 && doesDatabaseSupportImportingUnknownVariants(sModule))
+                {	// if there is no genotyping data left and we are not working on a fixed list of variants then any other data is irrelevant
+                    mongoTemplate.getDb().dropDatabase();
+//                    project = null;
+                }
 			}
 			
 			progress.addStep("Reading marker IDs");
@@ -183,8 +208,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 	        	LOG.error("Error occured sorting import file", ioe);
 	        	return;
 	        }
-	
-			
+
 			// create project if necessary
 			if (project == null)
 			{	// create it
@@ -194,8 +218,8 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				project.setTechnology(sTechnology);
 				project.getVariantTypes().add("SNP");
 			}	
-					
-			
+			project.setPloidyLevel(2);
+
 			// import genotyping data
 			progress.addStep("Processing genotype lines by thousands");
 			progress.moveToNextStep();
@@ -245,7 +269,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 			}
 			while (sLine != null);		
 
-			Comparable mgdbVariantId = existingVariantIDs.get(sVariantName);	// when saving the last variant there is not difference between sVariantName and sPreviousVariant
+			Comparable mgdbVariantId = existingVariantIDs.get(sVariantName.toUpperCase());	// when saving the last variant there is not difference between sVariantName and sPreviousVariant
 			if (mgdbVariantId == null)
 				LOG.warn("Unknown id: " + sPreviousVariant);
 			else if (mgdbVariantId.toString().startsWith("*"))
@@ -257,11 +281,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 	
 			in.close();
 			sortedFile.delete();
-	
-			int ploidy = 2;	// the only one supported by STD format 
-			if (project.getPloidyLevel() < ploidy)
-				project.setPloidyLevel(ploidy);
-			
+				
             if (!project.getVariantTypes().contains(Type.SNP.toString())) {
                 project.getVariantTypes().add(Type.SNP.toString());
             }
@@ -280,13 +300,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 			progress.addStep("Preparing database for searches");
 			progress.moveToNextStep();
 			MgdbDao.prepareDatabaseForSearches(mongoTemplate);
-//			DBCollection variantColl = mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantData.class));
-//			LOG.debug("Creating index on field " + VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_ILLUMINA);
-//			variantColl.createIndex(VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_ILLUMINA);
-//			LOG.debug("Creating index on field " + VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_INTERNAL);
-//			variantColl.createIndex(VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_ILLUMINA);
-//			LOG.debug("Creating index on field " + VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_NCBI);
-//			variantColl.createIndex(VariantData.FIELDNAME_SYNONYMS + "." + VariantData.FIELDNAME_SYNONYM_TYPE_ID_ILLUMINA);
 			progress.markAsComplete();
 		}
 		finally
@@ -382,7 +395,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				else
 				{
 					ArrayList<Integer> alleleIndexList = new ArrayList<Integer>();	
-//					List<Float> freqs = new ArrayList<Float>();
 					boolean fAddedSomeAlleles = false;
 					for (int i=3; i<=4; i++)
 					{
@@ -394,7 +406,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 						}
 						
 						alleleIndexList.add(variant.getKnownAlleleList().indexOf(cells[indexToUse]));
-//						freqs.add(0.5f /*FIXME: should be calculated*/);
 					}
 					
 					if (fAddedSomeAlleles && update != null)
@@ -405,9 +416,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				}
 
 				SampleGenotype genotype = new SampleGenotype(gtString);
-//					genotype.getAdditionalInfo().put("frq", StringUtils.join(freqs, "/"));
-//				if (usedSamples.get(sIndividualName) == null)
-//					LOG.info(sVariantId + " / " + sIndividualName + " / " + usedSamples.size());
 				theRun.getSampleGenotypes().put(usedSamples.get(sIndividualName).getSampleIndex(), genotype);
 			}
             project.getAlleleCounts().add(variant.getKnownAlleleList().size());	// it's a TreeSet so it will only be added if it's not already present
