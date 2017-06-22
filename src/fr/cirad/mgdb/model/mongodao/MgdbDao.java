@@ -97,7 +97,7 @@ public class MgdbDao extends Helper
 		long totalIndividualCount = mongoTemplate.count(new Query(), Individual.class);
 		long maxGenotypeCount = totalVariantCount*totalIndividualCount;
 		long numberOfTaggedVariants = Math.min(totalVariantCount / 2, maxGenotypeCount > 200000000 ? 300 : (maxGenotypeCount > 100000000 ? 200 : (maxGenotypeCount > 50000000 ? 100 : (maxGenotypeCount > 20000000 ? 50 : (maxGenotypeCount > 5000000 ? 40 : 30)))));
-		int nChunkSize = (int) Math.max(1, (int) totalVariantCount / (numberOfTaggedVariants - 1));
+		int nChunkSize = (int) Math.max(1, (int) totalVariantCount / Math.max(1, numberOfTaggedVariants - 1));
 		LOG.debug("Number of variants between 2 tagged ones: " + nChunkSize);
 		
 		DBCollection collection = mongoTemplate.getCollection(MgdbDao.COLLECTION_NAME_TAGGED_VARIANT_IDS);
@@ -155,7 +155,7 @@ public class MgdbDao extends Helper
 		Query variantQuery = new Query();
 		Criteria runQueryVariantCriteria = null;
 
-//		query.with(sort == null ? new Sort(Direction.ASC, "_id") : sort);
+//		variantQuery.with(sort == null ? new Sort(Direction.ASC, "_id") : sort);
 		if (sort != null)
 			variantQuery.with(sort);
 		if (variantIdListToRestrictTo != null && variantIdListToRestrictTo.size() > 0)
@@ -262,4 +262,33 @@ public class MgdbDao extends Helper
 		
 		return result;
 	}
+	
+//	public static LinkedHashMap<SampleId, String> findRunCorrespondingToEachProjectSample(MongoTemplate mongoTemplate, int projectId) throws Exception
+//	{	/* FIXME: this shall become much simpler, or even straightforward when moving to the new data structure */
+//		LinkedHashMap<SampleId, String> result = new LinkedHashMap<SampleId, String>();
+//		GenotypingProject project = mongoTemplate.findById(projectId, GenotypingProject.class);
+//		TreeMap<Integer, GenotypingSample> samples = project.getSamples();
+//		for (Integer sampleIndex : samples.keySet())
+//		{
+//			SampleId sampleId = new SampleId(project.getId(), sampleIndex);
+//			if (project.getRuns().size() == 1)
+//				result.put(sampleId, project.getRuns().get(0));
+//			else if (!result.containsKey(sampleId))
+//			{
+//				Query query = new Query(Criteria.where("_id." + VariantRunDataId.FIELDNAME_PROJECT_ID).is(projectId).andOperator(new Criteria(VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + sampleIndex).exists(true)));
+//				VariantRunData variantRunData = mongoTemplate.findOne(query, VariantRunData.class);
+//				if (variantRunData == null)
+//					throw new Exception("Unable to find a run in project " + projectId + " that involves sample " + sampleIndex);
+//
+//				for (int aSampleIndex : variantRunData.getSampleGenotypes().keySet())
+//				{
+//					SampleId aSampleId = new SampleId(project.getId(), aSampleIndex);
+//					if (!result.containsKey(aSampleId))
+//						result.put(aSampleId, variantRunData.getRunName());
+//				}
+//			}
+//		}
+//		
+//		return result;
+//	}
 }
