@@ -32,19 +32,11 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
 import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
-import com.mongodb.AggregationOptions;
-import com.mongodb.BasicDBObject;
-import com.mongodb.Cursor;
-import com.mongodb.DBCollection;
-import com.mongodb.DBObject;
-import com.mongodb.AggregationOptions.Builder;
-import com.mongodb.AggregationOptions.OutputMode;
+import com.mongodb.DBCursor;
 
 import fr.cirad.mgdb.exporting.IExportHandler;
 import fr.cirad.mgdb.model.mongo.maintypes.GenotypingProject;
 import fr.cirad.mgdb.model.mongo.maintypes.Individual;
-import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
-import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
@@ -67,40 +59,16 @@ public abstract class AbstractMarkerOrientedExportHandler implements IExportHand
 	 *
 	 * @param outputStream the output stream
 	 * @param sModule the module
-	 * @param sampleIDs the sample ids
+	 * @param sampleIDs the sample i ds
 	 * @param progress the progress
-	 * @param variantCollection the marker cursor
+	 * @param markerCursor the marker cursor
 	 * @param markerSynonyms the marker synonyms
 	 * @param nMinimumReadDepth the n minimum read depth
 	 * @param readDepthThreshold the read depth threshold
 	 * @param readyToExportFiles the ready to export files
 	 * @throws Exception the exception
 	 */
-	abstract public void exportData(OutputStream outputStream, String sModule, List<SampleId> sampleIDs, ProgressIndicator progress, DBCollection variantCollection, Map<Comparable, Comparable> markerSynonyms, int nMinimumReadDepth, int readDepthThreshold, Map<String, InputStream> readyToExportFiles) throws Exception;
-
-	protected Cursor getCursorOnVariantCollection(DBCollection variantCollection, Integer chunkSize)
-	{
-		boolean fWorkingOnMainCollection = variantCollection.getName().equals(MongoTemplateManager.getMongoCollectionName(VariantData.class));
-		DBObject versionFieldExistsQuery = new BasicDBObject(VariantData.FIELDNAME_VERSION, new BasicDBObject("$exists", true));
-		boolean fNeedToExcludeObsoleteVariantsFromResults = variantCollection.count(versionFieldExistsQuery) > 0;
-		DBObject query = fWorkingOnMainCollection || !fNeedToExcludeObsoleteVariantsFromResults ? null : versionFieldExistsQuery;
-		String sequenceField = VariantData.FIELDNAME_REFERENCE_POSITION + "." + ReferencePosition.FIELDNAME_SEQUENCE;
-		String startField = VariantData.FIELDNAME_REFERENCE_POSITION + "." + ReferencePosition.FIELDNAME_START_SITE;
-		BasicDBObject sort = new BasicDBObject/*(sequenceField, 1).append(startField, 1).append*/("_id", 1);
-		DBObject projection = new BasicDBObject();
-		projection.put(sequenceField, 1);
-		projection.put(startField, 1);
-		
-		List<DBObject> pipeline = new ArrayList<DBObject>();
-		if (query != null)
-			pipeline.add(new BasicDBObject("$match", query));
-		pipeline.add(new BasicDBObject("$sort", sort));
-		pipeline.add(new BasicDBObject("$project", projection));
-		Builder aggOptsBuilder = AggregationOptions.builder().allowDiskUse(true).outputMode(OutputMode.CURSOR);
-		if (chunkSize != null)
-			aggOptsBuilder.batchSize(chunkSize);
-		return variantCollection.aggregate(pipeline, aggOptsBuilder.build());
-	}
+	abstract public void exportData(OutputStream outputStream, String sModule, List<SampleId> sampleIDs, ProgressIndicator progress, DBCursor markerCursor, Map<Comparable, Comparable> markerSynonyms, int nMinimumReadDepth, int readDepthThreshold, Map<String, InputStream> readyToExportFiles) throws Exception;
 
 	/**
 	 * Gets the individuals from samples.

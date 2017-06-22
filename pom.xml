@@ -5,7 +5,7 @@
     <name>Mongo Genotype DataBase</name>
     <groupId>fr.cirad</groupId>
     <artifactId>mgdb</artifactId>
-    <version>1.0-RELEASE</version>
+    <version>1.2-RELEASE</version>
     
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

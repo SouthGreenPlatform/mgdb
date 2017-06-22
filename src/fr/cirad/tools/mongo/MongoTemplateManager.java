@@ -24,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -58,8 +59,8 @@ import org.springframework.stereotype.Component;
 import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoCredential;
+import com.mongodb.MongoTimeoutException;
 import com.mongodb.ServerAddress;
-import com.mongodb.WriteConcern;
 
 import fr.cirad.tools.AppConfig;
 import fr.cirad.tools.Helper;
@@ -166,7 +167,6 @@ public class MongoTemplateManager implements ApplicationContextAware {
         for (String sModule : templateMap.keySet()) {
 
             MongoTemplate mongoTemplate = templateMap.get(sModule);
-            mongoTemplate.getDb().setWriteConcern(WriteConcern.ACKNOWLEDGED);
             String connectPoint = mongoTemplate.getDb().getMongo().getConnectPoint();
             if (authorizedCleanupServers == null || authorizedCleanupServers.contains(connectPoint)) {
                 for (String collName : mongoTemplate.getCollectionNames()) {
@@ -203,22 +203,31 @@ public class MongoTemplateManager implements ApplicationContextAware {
      */
     static public void loadDataSources() {
         templateMap.clear();
+        mongoClients.clear();
+        publicDatabases.clear();
+        hiddenDatabases.clear();
         try {
             ResourceBundle bundle = ResourceBundle.getBundle(resource, resourceControl);
             Map<String, Mongo> mongoHosts = applicationContext.getBeansOfType(Mongo.class);
 
-            for (String sHost : mongoHosts.keySet()) {
-                Mongo host = mongoHosts.get(sHost);
-                ServerAddress serverAddress = new ServerAddress(host.getAddress().getHost(), host.getAddress().getPort());
-                UserCredentials uc = null;
-                try {
-                    uc = applicationContext.getBean(sHost + "Credentials", UserCredentials.class);
-                } catch (NoSuchBeanDefinitionException nsbde) {
-                    LOG.warn("No user credentials configured for host " + sHost + "! You might want to create a bean UserCredentials named " + sHost + "Credentials");
-                }
-                MongoClient client = uc != null ? new MongoClient(serverAddress, Arrays.asList(MongoCredential.createCredential(uc.getUsername(), "admin", uc.getPassword().toCharArray()))) : new MongoClient(serverAddress);
-                mongoClients.put(sHost, client);
-            }
+            for (String sHost : mongoHosts.keySet())
+	            try
+	            {
+	                Mongo host = mongoHosts.get(sHost);
+	                ServerAddress serverAddress = new ServerAddress(host.getAddress().getHost(), host.getAddress().getPort());
+	                UserCredentials uc = null;
+	                try {
+	                    uc = applicationContext.getBean(sHost + "Credentials", UserCredentials.class);
+	                } catch (NoSuchBeanDefinitionException nsbde) {
+	                    LOG.warn("No user credentials configured for host " + sHost + "! You might want to create a bean UserCredentials named " + sHost + "Credentials");
+	                }
+	                MongoClient client = uc != null ? new MongoClient(serverAddress, Arrays.asList(MongoCredential.createCredential(uc.getUsername(), "admin", uc.getPassword().toCharArray()))) : new MongoClient(serverAddress);
+	                mongoClients.put(sHost, client);
+	            }
+	            catch (MongoTimeoutException mte)
+	            {
+	                LOG.warn("Unable to connect to host " + sHost, mte);
+	            }
             Enumeration<String> bundleKeys = bundle.getKeys();
 
             while (bundleKeys.hasMoreElements()) {
@@ -239,7 +248,8 @@ public class MongoTemplateManager implements ApplicationContextAware {
                     continue;
                 }
 
-                try {
+                try
+                {
                     templateMap.put(cleanKey, createMongoTemplate(cleanKey, datasourceInfo[0], datasourceInfo[1]));
                     if (fPublic) {
                         publicDatabases.add(cleanKey);
@@ -259,7 +269,13 @@ public class MongoTemplateManager implements ApplicationContextAware {
                         }
                     }
 
-                } catch (Exception e) {
+                }
+                catch (UnknownHostException e)
+                {
+                    LOG.warn("Unable to create MongoTemplate for module " + cleanKey + " (no such host)");
+                }
+                catch (Exception e)
+                {
                     LOG.warn("Unable to create MongoTemplate for module " + cleanKey, e);
                 }
             }
@@ -280,7 +296,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
     static public MongoTemplate createMongoTemplate(String sModule, String sHost, String sDbName) throws Exception {
         MongoClient client = mongoClients.get(sHost);
         if (client == null) {
-            throw new Exception("Unknown host: " + sHost);
+            throw new UnknownHostException("Unknown host: " + sHost);
         }
 
 //		UserCredentials uc = mongoCredentials.get(sHost);
@@ -412,11 +428,14 @@ public class MongoTemplateManager implements ApplicationContextAware {
         return publicDatabases;
     }
 
-    static public void dropCollection(String processId) {
+    static public void dropAllTempColls(String token) {
+    	if (token == null)
+    		return;
+    	
         DBCollection tmpColl;
-        String tempCollName = MongoTemplateManager.TEMP_EXPORT_PREFIX + Helper.convertToMD5(processId);
+        String tempCollName = MongoTemplateManager.TEMP_EXPORT_PREFIX + Helper.convertToMD5(token);
         for (String module : MongoTemplateManager.getTemplateMap().keySet()) {
-            // drop all tmp collection associate to this processId
+            // drop all temp collections associated to this token
             tmpColl = templateMap.get(module).getCollection(tempCollName);
             tmpColl.drop();
         }

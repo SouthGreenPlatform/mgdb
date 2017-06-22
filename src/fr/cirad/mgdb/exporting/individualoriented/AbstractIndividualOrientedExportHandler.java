@@ -38,13 +38,8 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
 import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
-import com.mongodb.AggregationOptions;
-import com.mongodb.BasicDBObject;
-import com.mongodb.Cursor;
-import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
-import com.mongodb.AggregationOptions.Builder;
-import com.mongodb.AggregationOptions.OutputMode;
 
 import fr.cirad.mgdb.exporting.IExportHandler;
 import fr.cirad.mgdb.model.mongo.maintypes.GenotypingProject;
@@ -55,6 +50,7 @@ import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleGenotype;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.mgdb.model.mongodao.MgdbDao;
+import fr.cirad.tools.Helper;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
@@ -79,37 +75,12 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 	 * @param individualExportFiles the individual export files
 	 * @param fDeleteSampleExportFilesOnExit whether or not to delete sample export files on exit
 	 * @param progress the progress
-	 * @param variantCollection the marker cursor
+	 * @param markerCursor the marker cursor
 	 * @param markerSynonyms the marker synonyms
 	 * @param readyToExportFiles the ready to export files
 	 * @throws Exception the exception
 	 */
-	abstract public void exportData(OutputStream outputStream, String sModule, Collection<File> individualExportFiles, boolean fDeleteSampleExportFilesOnExit, ProgressIndicator progress, DBCollection variantCollection, Map<Comparable, Comparable> markerSynonyms, Map<String, InputStream> readyToExportFiles) throws Exception;
-
-	
-	protected Cursor getCursorOnVariantCollection(DBCollection variantCollection, Integer chunkSize)
-	{
-		boolean fWorkingOnMainCollection = variantCollection.getName().equals(MongoTemplateManager.getMongoCollectionName(VariantData.class));
-		DBObject versionFieldExistsQuery = new BasicDBObject(VariantData.FIELDNAME_VERSION, new BasicDBObject("$exists", true));
-		boolean fNeedToExcludeObsoleteVariantsFromResults = variantCollection.count(versionFieldExistsQuery) > 0;
-		DBObject query = fWorkingOnMainCollection || !fNeedToExcludeObsoleteVariantsFromResults ? null : versionFieldExistsQuery;
-		String sequenceField = VariantData.FIELDNAME_REFERENCE_POSITION + "." + ReferencePosition.FIELDNAME_SEQUENCE;
-		String startField = VariantData.FIELDNAME_REFERENCE_POSITION + "." + ReferencePosition.FIELDNAME_START_SITE;
-		BasicDBObject sort = new BasicDBObject/*(sequenceField, 1).append(startField, 1).append*/("_id", 1);
-		DBObject projection = new BasicDBObject();
-		projection.put(sequenceField, 1);
-		projection.put(startField, 1);
-		
-		List<DBObject> pipeline = new ArrayList<DBObject>();
-		if (query != null)
-			pipeline.add(new BasicDBObject("$match", query));
-		pipeline.add(new BasicDBObject("$sort", sort));
-		pipeline.add(new BasicDBObject("$project", projection));
-		Builder aggOptsBuilder = AggregationOptions.builder().allowDiskUse(true).outputMode(OutputMode.CURSOR);
-		if (chunkSize != null)
-			aggOptsBuilder.batchSize(chunkSize);
-		return variantCollection.aggregate(pipeline, aggOptsBuilder.build());
-	}
+	abstract public void exportData(OutputStream outputStream, String sModule, Collection<File> individualExportFiles, boolean fDeleteSampleExportFilesOnExit, ProgressIndicator progress, DBCursor markerCursor, Map<Comparable, Comparable> markerSynonyms, Map<String, InputStream> readyToExportFiles) throws Exception;
 
 	/**
 	 * Gets the individuals from samples.
@@ -142,7 +113,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 	 * Creates the export files.
 	 *
 	 * @param sModule the module
-	 * @param variantCollection the marker cursor
+	 * @param markerCursor the marker cursor
 	 * @param sampleIDs the sample i ds
 	 * @param exportID the export id
 	 * @param genotypeQualityThreshold the genotype quality threshold
@@ -151,7 +122,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 	 * @return the linked hash map
 	 * @throws Exception the exception
 	 */
-	public LinkedHashMap<String, File> createExportFiles(String sModule, DBCollection variantCollection, List<SampleId> sampleIDs, String exportID, int genotypeQualityThreshold, int readDepthThreshold, final ProgressIndicator progress) throws Exception
+	public LinkedHashMap<String, File> createExportFiles(String sModule, DBCursor markerCursor, List<SampleId> sampleIDs, String exportID, int genotypeQualityThreshold, int readDepthThreshold, final ProgressIndicator progress) throws Exception
 	{
 		long before = System.currentTimeMillis();
 
@@ -177,137 +148,129 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 			}
 		
 		final MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
-		long nLoadedMarkerCount = 0, markerCount = variantCollection.count();
+		int markerCount = markerCursor.count();
+		
 		short nProgress = 0, nPreviousProgress = 0;
 		int avgObjSize = (Integer) mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantRunData.class)).getStats().get("avgObjSize");
 		int nChunkSize = nMaxChunkSizeInMb*1024*1024 / avgObjSize;		
-		Cursor markerCursor = getCursorOnVariantCollection(variantCollection, nChunkSize);
-		
-		try
+		long nLoadedMarkerCount = 0;
+		markerCursor.batchSize(nChunkSize);
+		while (markerCursor.hasNext())
 		{
+			int nLoadedMarkerCountInLoop = 0;
+			final Map<Comparable, String> markerChromosomalPositions = new LinkedHashMap<Comparable, String>();
+			boolean fStartingNewChunk = true;
+			while (markerCursor.hasNext() && (fStartingNewChunk || nLoadedMarkerCountInLoop%nChunkSize != 0)) {
+				DBObject exportVariant = markerCursor.next();
+				DBObject refPos = (DBObject) exportVariant.get(VariantData.FIELDNAME_REFERENCE_POSITION);
+				markerChromosomalPositions.put((Comparable) exportVariant.get("_id"), refPos == null ? null : (refPos.get(ReferencePosition.FIELDNAME_SEQUENCE) + ":" + refPos.get(ReferencePosition.FIELDNAME_START_SITE)));
+				nLoadedMarkerCountInLoop++;
+				fStartingNewChunk = false;
+			}
 
-	//		markerCursor.batchSize(nChunkSize);
-			while (markerCursor.hasNext())
+			HashMap<String, StringBuffer> individualGenotypeBuffers = new HashMap<String, StringBuffer>();	// keeping all files open leads to failure (see ulimit command), keeping them closed and reopening them each time we need to write a genotype is too time consuming: so our compromise is to reopen them only once per chunk
+			List<Comparable> currentMarkers = new ArrayList<Comparable>(markerChromosomalPositions.keySet());
+			LinkedHashMap<VariantData, Collection<VariantRunData>> variantsAndRuns = MgdbDao.getSampleGenotypes(mongoTemplate, sampleIDs, currentMarkers, true, null /*new Sort(VariantData.FIELDNAME_REFERENCE_POSITION + "." + ChromosomalPosition.FIELDNAME_SEQUENCE).and(new Sort(VariantData.FIELDNAME_REFERENCE_POSITION + "." + ChromosomalPosition.FIELDNAME_START_SITE))*/);	// query mongo db for matching genotypes
+			VariantData[] variants = variantsAndRuns.keySet().toArray(new VariantData[variantsAndRuns.size()]);
+
+			for (i=0; i<variantsAndRuns.size(); i++)	// read data and write results into temporary files (one per sample)
 			{
-				int nLoadedMarkerCountInLoop = 0;
-				final Map<Comparable, String> markerChromosomalPositions = new LinkedHashMap<Comparable, String>();
-				boolean fStartingNewChunk = true;
-				while (markerCursor.hasNext() && (fStartingNewChunk || nLoadedMarkerCountInLoop%nChunkSize != 0)) {
-					DBObject exportVariant = markerCursor.next();
-					DBObject refPos = (DBObject) exportVariant.get(VariantData.FIELDNAME_REFERENCE_POSITION);
-					markerChromosomalPositions.put((Comparable) exportVariant.get("_id"), refPos.get(ReferencePosition.FIELDNAME_SEQUENCE) + ":" + refPos.get(ReferencePosition.FIELDNAME_START_SITE));
-					nLoadedMarkerCountInLoop++;
-					fStartingNewChunk = false;
-				}
-	
-				HashMap<String, StringBuffer> individualGenotypeBuffers = new HashMap<String, StringBuffer>();	// keeping all files open leads to failure (see ulimit command), keeping them closed and reopening them each time we need to write a genotype is too time consuming: so our compromise is to reopen them only once per chunk
-				List<Comparable> currentMarkers = new ArrayList<Comparable>(markerChromosomalPositions.keySet());
-				LinkedHashMap<VariantData, Collection<VariantRunData>> variantsAndRuns = MgdbDao.getSampleGenotypes(mongoTemplate, sampleIDs, currentMarkers, true, null /*new Sort(VariantData.FIELDNAME_REFERENCE_POSITION + "." + ChromosomalPosition.FIELDNAME_SEQUENCE).and(new Sort(VariantData.FIELDNAME_REFERENCE_POSITION + "." + ChromosomalPosition.FIELDNAME_START_SITE))*/);	// query mongo db for matching genotypes
-				VariantData[] variants = variantsAndRuns.keySet().toArray(new VariantData[variantsAndRuns.size()]);
-	
-				for (i=0; i<variantsAndRuns.size(); i++)	// read data and write results into temporary files (one per sample)
-				{
-					HashMap<String, List<String>> individualGenotypes = new HashMap<String, List<String>>();
-					
-					long markerIndex = nLoadedMarkerCount + currentMarkers.indexOf(variants[i].getId());
-					Collection<VariantRunData> runs = variantsAndRuns.get(variants[i]);
-					if (runs != null)
-						for (VariantRunData run : runs)
-							for (Integer sampleIndex : run.getSampleGenotypes().keySet())
+				HashMap<String, List<String>> individualGenotypes = new HashMap<String, List<String>>();
+				
+				long markerIndex = nLoadedMarkerCount + currentMarkers.indexOf(variants[i].getId());
+				Collection<VariantRunData> runs = variantsAndRuns.get(variants[i]);
+				if (runs != null)
+					for (VariantRunData run : runs)
+						for (Integer sampleIndex : run.getSampleGenotypes().keySet())
+						{
+							SampleGenotype sampleGenotype = run.getSampleGenotypes().get(sampleIndex);
+							List<String> alleles = variants[i].getAllelesFromGenotypeCode(sampleGenotype.getCode());
+							String individualId = individuals.get(sampleIDs.indexOf(new SampleId(run.getId().getProjectId(), sampleIndex))).getId();
+							
+							Integer gq = null;
+							try
 							{
-								SampleGenotype sampleGenotype = run.getSampleGenotypes().get(sampleIndex);
-								List<String> alleles = variants[i].getAllelesFromGenotypeCode(sampleGenotype.getCode());
-								String individualId = individuals.get(sampleIDs.indexOf(new SampleId(run.getId().getProjectId(), sampleIndex))).getId();
-								
-								Integer gq = null;
-								try
-								{
-									gq = (Integer) sampleGenotype.getAdditionalInfo().get(VariantData.GT_FIELD_GQ);
-								}
-								catch (Exception ignored)
-								{}
-								if (gq != null && gq < genotypeQualityThreshold)
-									continue;
-								
-								Integer dp = null;
-								try
-								{
-									dp = (Integer) sampleGenotype.getAdditionalInfo().get(VariantData.GT_FIELD_DP);
-								}
-								catch (Exception ignored)
-								{}
-								if (dp != null && dp < readDepthThreshold)
-									continue;
-								
-								List<String> storedIndividualGenotypes = individualGenotypes.get(individualId);
-								if (storedIndividualGenotypes == null)
-								{
-									storedIndividualGenotypes = new ArrayList<String>();
-									individualGenotypes.put(individualId, storedIndividualGenotypes);
-								}
-		
-								String sAlleles = StringUtils.join(alleles, ' ');
-								storedIndividualGenotypes.add(sAlleles);
+								gq = (Integer) sampleGenotype.getAdditionalInfo().get(VariantData.GT_FIELD_GQ);
+							}
+							catch (Exception ignored)
+							{}
+							if (gq != null && gq < genotypeQualityThreshold)
+								continue;
+							
+							Integer dp = null;
+							try
+							{
+								dp = (Integer) sampleGenotype.getAdditionalInfo().get(VariantData.GT_FIELD_DP);
+							}
+							catch (Exception ignored)
+							{}
+							if (dp != null && dp < readDepthThreshold)
+								continue;
+							
+							List<String> storedIndividualGenotypes = individualGenotypes.get(individualId);
+							if (storedIndividualGenotypes == null)
+							{
+								storedIndividualGenotypes = new ArrayList<String>();
+								individualGenotypes.put(individualId, storedIndividualGenotypes);
 							}
 	
-					for (String individual : individualGenotypes.keySet())
-					{
-						StringBuffer genotypeBuffer = individualGenotypeBuffers.get(individual);
-						if (genotypeBuffer == null)
-						{
-							genotypeBuffer = new StringBuffer(); 
-							individualGenotypeBuffers.put(individual, genotypeBuffer); // we are about to write individual's first genotype for this chunk
+							String sAlleles = StringUtils.join(alleles, ' ');
+							storedIndividualGenotypes.add(sAlleles);
 						}
-						Integer gtCount = MgdbDao.getCountForKey(individualOutputGenotypeCounts, individual);
-						while (gtCount < markerIndex)
-						{
-							genotypeBuffer.append(LINE_SEPARATOR);
-							individualOutputGenotypeCounts.put(individual, ++gtCount);
-						}
-						List<String> storedIndividualGenotypes = individualGenotypes.get(individual);
-						for (int j=0; j<storedIndividualGenotypes.size(); j++)
-						{
-							String storedIndividualGenotype = storedIndividualGenotypes.get(j);
-							genotypeBuffer.append(storedIndividualGenotype + (j == storedIndividualGenotypes.size() - 1 ? LINE_SEPARATOR : "|"));
-						}
-						individualOutputGenotypeCounts.put(individual, gtCount + 1);
-					}
-				}
-				
-				// write genotypes collected in this chunk to each individual's file
-				for (String individual : individualList)
+
+				for (String individual : individualGenotypes.keySet())
 				{
-					BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(files.get(individual), true));
-					StringBuffer chunkStringBuffer = individualGenotypeBuffers.get(individual);
-					if (chunkStringBuffer != null)
-						os.write(chunkStringBuffer.toString().getBytes());
-					
-					// deal with trailing missing genotypes
-					Integer gtCount = MgdbDao.getCountForKey(individualOutputGenotypeCounts, individual);
-					while (gtCount < nLoadedMarkerCount + currentMarkers.size())
+					StringBuffer genotypeBuffer = individualGenotypeBuffers.get(individual);
+					if (genotypeBuffer == null)
 					{
-						os.write(LINE_SEPARATOR.getBytes());
+						genotypeBuffer = new StringBuffer(); 
+						individualGenotypeBuffers.put(individual, genotypeBuffer); // we are about to write individual's first genotype for this chunk
+					}
+					Integer gtCount = Helper.getCountForKey(individualOutputGenotypeCounts, individual);
+					while (gtCount < markerIndex)
+					{
+						genotypeBuffer.append(LINE_SEPARATOR);
 						individualOutputGenotypeCounts.put(individual, ++gtCount);
 					}
-					os.close();
-				}
-				
-				if (progress.hasAborted())
-					break;
-	
-				nLoadedMarkerCount += nLoadedMarkerCountInLoop;			
-				nProgress = (short) (nLoadedMarkerCount * 100 / markerCount);
-				if (nProgress > nPreviousProgress)
-				{
-	//				LOG.debug("============= createExportFiles: " + nProgress + "% =============");
-					progress.setCurrentStepProgress(nProgress);
-					nPreviousProgress = nProgress;
+					List<String> storedIndividualGenotypes = individualGenotypes.get(individual);
+					for (int j=0; j<storedIndividualGenotypes.size(); j++)
+					{
+						String storedIndividualGenotype = storedIndividualGenotypes.get(j);
+						genotypeBuffer.append(storedIndividualGenotype + (j == storedIndividualGenotypes.size() - 1 ? LINE_SEPARATOR : "|"));
+					}
+					individualOutputGenotypeCounts.put(individual, gtCount + 1);
 				}
 			}
-		}
-		finally
-		{
-			markerCursor.close();
+			
+			// write genotypes collected in this chunk to each individual's file
+			for (String individual : individualList)
+			{
+				BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(files.get(individual), true));
+				StringBuffer chunkStringBuffer = individualGenotypeBuffers.get(individual);
+				if (chunkStringBuffer != null)
+					os.write(chunkStringBuffer.toString().getBytes());
+				
+				// deal with trailing missing genotypes
+				Integer gtCount = Helper.getCountForKey(individualOutputGenotypeCounts, individual);
+				while (gtCount < nLoadedMarkerCount + currentMarkers.size())
+				{
+					os.write(LINE_SEPARATOR.getBytes());
+					individualOutputGenotypeCounts.put(individual, ++gtCount);
+				}
+				os.close();
+			}
+			
+			if (progress.hasAborted())
+				break;
+
+			nLoadedMarkerCount += nLoadedMarkerCountInLoop;			
+			nProgress = (short) (nLoadedMarkerCount * 100 / markerCount);
+			if (nProgress > nPreviousProgress)
+			{
+//				LOG.debug("============= createExportFiles: " + nProgress + "% =============");
+				progress.setCurrentStepProgress(nProgress);
+				nPreviousProgress = nProgress;
+			}
 		}
 
 	 	progress.setCurrentStepProgress((short) 100);
