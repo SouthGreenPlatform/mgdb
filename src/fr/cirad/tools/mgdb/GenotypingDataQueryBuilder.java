@@ -31,7 +31,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
-import com.mongodb.Bytes;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
@@ -45,7 +44,6 @@ import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.Helper;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class GenotypingDataQueryBuilder.
  */
@@ -112,6 +110,10 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	
 	/** The current tagged variant. */
 	private Comparable currentTaggedVariant = null;
+
+	private List<List<Comparable>> preFilteredIDs = new ArrayList();
+
+	private boolean fKeepTrackOfPreFilters = false;
 	
 	/** The Constant MAX_NUMBER_OF_GENOTYPES_TO_QUERY_AT_ONCE. */
 	static final private int MAX_NUMBER_OF_GENOTYPES_TO_QUERY_AT_ONCE = 1000000;
@@ -254,15 +256,31 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 				MgdbDao.prepareDatabaseForSearches(mongoTemplate);
 				this.nTotalVariantCount = taggedVarColl.count() + 1;
 			}
-			this.variantCursor = taggedVarColl.find().addOption(Bytes.QUERYOPTION_NOTIMEOUT);
+			this.variantCursor = taggedVarColl.find()/*.addOption(Bytes.QUERYOPTION_NOTIMEOUT)*/;
 		}
 		else
 		{
 	    	// we may need to split the query into several parts if the number of input variants is large (otherwise the query may exceed 16Mb)
 			this.nNVariantsQueriedAtOnce = MAX_NUMBER_OF_GENOTYPES_TO_QUERY_AT_ONCE / Math.max(1, nSampleCount * (NUMBER_OF_SIMULTANEOUS_QUERY_THREADS / 2));
-			this.variantCursor = tempExportColl.find().addOption(Bytes.QUERYOPTION_NOTIMEOUT);
+			this.variantCursor = tempExportColl.find()/*.addOption(Bytes.QUERYOPTION_NOTIMEOUT)*/;
 		}
     }
+	
+	public List<Comparable> getPreFilteredIDsForChunk(int n)
+	{
+		return preFilteredIDs.get(n);
+	}
+	
+	public boolean isKeepingTrackOfPreFilters() {
+		return fKeepTrackOfPreFilters;
+	}
+
+	public void keepTrackOfPreFilters(boolean fKeepTrackOfPreFilters) throws Exception {
+		if (fKeepTrackOfPreFilters && nNVariantsQueriedAtOnce == 0)
+			throw new Exception("Keeping track of pre-filters can only be enabled on data where a preliminary, variant-level, filter was applied");
+
+		this.fKeepTrackOfPreFilters = fKeepTrackOfPreFilters;
+	}
 	
 	/**
 	 * Gets the number of queries.
@@ -349,12 +367,20 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
         if (nNVariantsQueriedAtOnce == 0)
         {	// splitting using tagged variants because we have no filter on variant features
         	BasicDBList chunkMatchAndList = new BasicDBList();
+        	Comparable leftBound = null, rightBound = null;
 			if (currentTaggedVariant != null)
-				chunkMatchAndList.add(new BasicDBObject("_id." + VariantRunDataId.FIELDNAME_VARIANT_ID, new BasicDBObject("$gt", ObjectId.isValid(currentTaggedVariant.toString()) ? new ObjectId(currentTaggedVariant.toString()) : currentTaggedVariant)));
+			{
+				leftBound = ObjectId.isValid(currentTaggedVariant.toString()) ? new ObjectId(currentTaggedVariant.toString()) : currentTaggedVariant;
+				chunkMatchAndList.add(new BasicDBObject("_id." + VariantRunDataId.FIELDNAME_VARIANT_ID, new BasicDBObject("$gt", leftBound)));
+			}
 			currentTaggedVariant = variantCursor.hasNext() ? (Comparable) variantCursor.next().get("_id") : null;
 			if (currentTaggedVariant != null)
-				chunkMatchAndList.add(new BasicDBObject("_id." + VariantRunDataId.FIELDNAME_VARIANT_ID, new BasicDBObject("$lte", ObjectId.isValid(currentTaggedVariant.toString()) ? new ObjectId(currentTaggedVariant.toString()) : currentTaggedVariant)));
-			initialMatchList.addAll(chunkMatchAndList);
+			{
+				rightBound = ObjectId.isValid(currentTaggedVariant.toString()) ? new ObjectId(currentTaggedVariant.toString()) : currentTaggedVariant;
+				chunkMatchAndList.add(new BasicDBObject("_id." + VariantRunDataId.FIELDNAME_VARIANT_ID, new BasicDBObject("$lte", rightBound)));
+			}
+			
+			initialMatchList.add(chunkMatchAndList.size() > 1 ? new BasicDBObject("$and", chunkMatchAndList) : (BasicDBObject) chunkMatchAndList.iterator().next());
         }
         else
         {	// splitting using previously applied variant feature filter
@@ -366,10 +392,10 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	    		variantIndex++;
 	    	}
 	    	
-	        if (aVariantSubList.size() > 0)
-				initialMatchList.add(new BasicDBObject("_id." + VariantRunDataId.FIELDNAME_VARIANT_ID, new BasicDBObject("$in", aVariantSubList)));
+	        if (/*aVariantSubList.size() > 0 && */fKeepTrackOfPreFilters)
+	        	preFilteredIDs.add(aVariantSubList);
         }
-		
+
 		/* Step to match variants according to annotations */			
 		if (projectEffectAnnotations.size() > 0 && (geneNames.length() > 0 || variantEffects.length() > 0))
 		{
@@ -705,6 +731,95 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 //        System.out.println(pipeline.subList(1, pipeline.size()));
         return pipeline;
     }
+		
+//	private List<Comparable> buildFullListFromRange(MongoTemplate mongoTemplate, Comparable leftBound, Comparable rightBound) {
+//		if (leftBound == null)
+//			leftBound = mongoTemplate.findOne(new Query().with(new Sort(Sort.Direction.ASC, "_id")), VariantData.class).getId();
+//		if (rightBound == null)
+//			rightBound = mongoTemplate.findOne(new Query().with(new Sort(Sort.Direction.DESC, "_id")), VariantData.class).getId();
+//
+//		ArrayList<Comparable> result = new ArrayList<>();
+//		String leftAsString = leftBound.toString(), rightAsString = rightBound.toString();
+//		if (ObjectId.isValid(leftAsString) && ObjectId.isValid(rightAsString) && leftAsString.substring(0, 18).equals(rightAsString.substring(0, 18)))
+//		{
+//			int nCurrentId = Integer.parseInt(leftAsString.substring(18, 24), 16);
+//			while (nCurrentId <= Integer.parseInt(rightAsString.substring(18, 24), 16))
+//				result.add(new ObjectId(leftAsString.substring(0, 18) + Integer.toHexString(nCurrentId++)));
+//		}
+//		else
+//		{
+//			Query q = new Query().with(new Sort(Sort.Direction.ASC, "_id"));
+//			q.fields().include("_id");
+//			// not finished implementing method (functionality non needed)
+//		}
+//		return result;
+//	}
+
+	public static boolean areObjectIDsConsecutive(ObjectId first, ObjectId second)
+	{
+//		if (first == null || second == null)
+//			return false;
+
+		String firstAsString = first.toHexString(), secondAsString = second.toHexString();
+		if (!firstAsString.substring(0, 18).equals(secondAsString.substring(0, 18)))
+			return false;
+		
+		return 1 + Integer.parseInt(firstAsString.substring(18, 24), 16) == Integer.parseInt(secondAsString.substring(18, 24), 16);
+	}
+
+	public static BasicDBObject tryAndShrinkIdList(String pathToVariantId, Collection<Comparable> idCollection, int nShrinkThreshold)
+	{
+		if (idCollection.size() >= 300000)
+			try
+			{
+		//		long b4 = System.currentTimeMillis();
+		//		SortedSet<Comparable> idSet = SortedSet.class.isAssignableFrom(idCollection.getClass()) ? (SortedSet<Comparable>) idCollection : new TreeSet<Comparable>(idCollection);
+		//		System.out.println("sorting took " + (System.currentTimeMillis() - b4));
+				BasicDBList orList = new BasicDBList();
+				ArrayList<ObjectId> inIdList = new ArrayList<>(), rangeIdList = new ArrayList<>();
+				
+				ObjectId previousId = null;
+				for (Comparable id : idCollection)
+				{
+					ObjectId currentId = (ObjectId) id;
+					if (previousId == null || areObjectIDsConsecutive(previousId, currentId))
+						rangeIdList.add(currentId);
+					else
+					{
+						if (rangeIdList.size() >= nShrinkThreshold)
+						{	// replace list with a range
+							BasicDBList chunkMatchAndList = new BasicDBList();
+							chunkMatchAndList.add(new BasicDBObject(pathToVariantId, new BasicDBObject("$gte", rangeIdList.get(0))));
+							chunkMatchAndList.add(new BasicDBObject(pathToVariantId, new BasicDBObject("$lte", rangeIdList.get(rangeIdList.size() - 1))));
+							orList.add(new BasicDBObject("$and", chunkMatchAndList));
+						}
+						else
+							inIdList.addAll(rangeIdList);	// range is too small, keep the list
+		
+						rangeIdList.clear();
+						rangeIdList.add(currentId);
+					}
+					previousId = currentId;
+				}
+				inIdList.addAll(rangeIdList);
+		
+				if (inIdList.size() > 0 || orList.size() == 0)
+					orList.add(new BasicDBObject(pathToVariantId, new BasicDBObject("$in", inIdList)));
+		
+				return orList.size() > 1 ? new BasicDBObject("$or", orList) : (BasicDBObject) orList.iterator().next();
+			}
+			catch (ClassCastException cce)
+			{
+				if (!cce.getMessage().contains("ObjectId"))
+					throw cce;	// otherwise it simply means IDs are of a different type, in which case we can't shrink the collection
+			}
+//		else
+//		{
+//			LOG.debug("Didn't shrink id collection (" + idCollection.size() + " records only)");
+//		}
+		
+		return new BasicDBObject(pathToVariantId, new BasicDBObject("$in", idCollection));	// not shrinked
+	}
 
 	/**
 	 * Cleanup.
