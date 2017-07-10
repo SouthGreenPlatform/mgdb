@@ -24,9 +24,6 @@ public class AbstractGenotypeImport {
 	/** String representing nucleotides considered as valid */
 	protected static HashSet<String> validNucleotides = new HashSet<>(Arrays.asList(new String[] {"a", "A", "t", "T", "g", "G", "c", "C"}));
 	
-	/** String representing nucleotides considered as valid */
-	protected static HashSet<String> validNucleotides = new HashSet<>(Arrays.asList(new String[] {"a", "A", "t", "T", "g", "G", "c", "C"}));
-	
 	public static ArrayList<String> getIdentificationStrings(String sType, String sSeq, Long nStartPos, Collection<String> idAndSynonyms) throws Exception
 	{
 		ArrayList<String> result = new ArrayList<String>();

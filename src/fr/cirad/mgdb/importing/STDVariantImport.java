@@ -269,7 +269,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 			}
 			while (sLine != null);		
 
-			Comparable mgdbVariantId = existingVariantIDs.get(sVariantName);	// when saving the last variant there is not difference between sVariantName and sPreviousVariant
+			Comparable mgdbVariantId = existingVariantIDs.get(sVariantName.toUpperCase());	// when saving the last variant there is not difference between sVariantName and sPreviousVariant
 			if (mgdbVariantId == null)
 				LOG.warn("Unknown id: " + sPreviousVariant);
 			else if (mgdbVariantId.toString().startsWith("*"))
