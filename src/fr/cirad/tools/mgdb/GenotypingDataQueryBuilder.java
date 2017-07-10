@@ -394,6 +394,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	    	
 	        if (/*aVariantSubList.size() > 0 && */fKeepTrackOfPreFilters)
 	        	preFilteredIDs.add(aVariantSubList);
+	        initialMatchList.add(tryAndShrinkIdList("_id." + VariantRunDataId.FIELDNAME_VARIANT_ID, aVariantSubList, 4));
         }
 
 		/* Step to match variants according to annotations */			
