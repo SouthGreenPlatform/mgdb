@@ -116,7 +116,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	private boolean fKeepTrackOfPreFilters = false;
 	
 	/** The Constant MAX_NUMBER_OF_GENOTYPES_TO_QUERY_AT_ONCE. */
-	static final private int MAX_NUMBER_OF_GENOTYPES_TO_QUERY_AT_ONCE = 1000000;
+	static final private int MAX_NUMBER_OF_GENOTYPES_TO_QUERY_AT_ONCE = 350000;
 	
 	/** The Constant NUMBER_OF_SIMULTANEOUS_QUERY_THREADS. */
 	static final private int NUMBER_OF_SIMULTANEOUS_QUERY_THREADS = 5;
@@ -827,6 +827,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	 */
 	public void cleanup() {
 		variantCursor.close();
+		preFilteredIDs = new ArrayList();	// free allocated memory
 	}
 	
 	public static HashMap<String, String> getGenotypeCodeToQueryMap() {
