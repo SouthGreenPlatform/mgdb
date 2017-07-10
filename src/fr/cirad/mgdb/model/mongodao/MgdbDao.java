@@ -96,7 +96,7 @@ public class MgdbDao extends Helper
 		long totalVariantCount = mongoTemplate.count(new Query(), VariantData.class);
 		long totalIndividualCount = mongoTemplate.count(new Query(), Individual.class);
 		long maxGenotypeCount = totalVariantCount*totalIndividualCount;
-		long numberOfTaggedVariants = Math.min(totalVariantCount / 2, maxGenotypeCount > 200000000 ? 300 : (maxGenotypeCount > 100000000 ? 200 : (maxGenotypeCount > 50000000 ? 100 : (maxGenotypeCount > 20000000 ? 50 : (maxGenotypeCount > 5000000 ? 40 : 30)))));
+		long numberOfTaggedVariants = Math.min(totalVariantCount / 2, maxGenotypeCount > 200000000 ? 500 : (maxGenotypeCount > 100000000 ? 300 : (maxGenotypeCount > 50000000 ? 100 : (maxGenotypeCount > 20000000 ? 50 : (maxGenotypeCount > 5000000 ? 40 : 25)))));
 		int nChunkSize = (int) Math.max(1, (int) totalVariantCount / Math.max(1, numberOfTaggedVariants - 1));
 		LOG.debug("Number of variants between 2 tagged ones: " + nChunkSize);
 		
@@ -117,6 +117,13 @@ public class MgdbDao extends Helper
 			result.add(cursor.toString());
 			LOG.debug("Variant " + cursor + " tagged as position " + nChunkNumber + " (" + (System.currentTimeMillis() - before) + "ms)");
 		}
+		
+/*	This is how it is internally handled when sharding the data:
+ 		var splitKeys = db.runCommand({splitVector: "mgdb_Musa_acuminata_v2_private.variantRunData", keyPattern: {"_id":1}, maxChunkSizeBytes: 40250000}).splitKeys;
+		for (var key in splitKeys)
+		  db.taggedVariants.insert({"_id" : splitKeys[key]["_id"]["vi"]});
+*/
+		  		
 		return result;
 	}
 	
