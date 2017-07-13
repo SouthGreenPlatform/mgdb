@@ -120,9 +120,10 @@ public class HapMapImport extends AbstractGenotypeImport {
 	 * @param sTechnology the technology
 	 * @param mainFilePath the main file path
 	 * @param importMode the import mode
+	 * @return a project ID if it was created by this method, otherwise null
 	 * @throws Exception the exception
 	 */
-	public void importToMongo(String sModule, String sProject, String sRun, String sTechnology, String mainFilePath, int importMode) throws Exception
+	public Integer importToMongo(String sModule, String sProject, String sRun, String sTechnology, String mainFilePath, int importMode) throws Exception
 	{
 		long before = System.currentTimeMillis();
         ProgressIndicator progress = ProgressIndicator.get(m_processID);
@@ -196,6 +197,7 @@ public class HapMapImport extends AbstractGenotypeImport {
                 }
 			}
 
+			Integer createdProject = null;
 			// create project if necessary
 			if (project == null || importMode == 2)
 			{	// create it
@@ -203,6 +205,7 @@ public class HapMapImport extends AbstractGenotypeImport {
 				project.setName(sProject);
 				project.setOrigin(2 /* Sequencing */);
 				project.setTechnology(sTechnology);
+				createdProject = project.getId();
 			}
 			project.setPloidyLevel(2);
 
@@ -311,6 +314,7 @@ public class HapMapImport extends AbstractGenotypeImport {
 			progress.moveToNextStep();
 			MgdbDao.prepareDatabaseForSearches(mongoTemplate);
 			progress.markAsComplete();
+			return createdProject;
 		}
 		finally
 		{

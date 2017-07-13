@@ -133,9 +133,10 @@ public class PlinkImport extends AbstractGenotypeImport {
 	 * @param mapFilePath the map file path
 	 * @param pedFilePath the ped file path
 	 * @param importMode the import mode
+	 * @return a project ID if it was created by this method, otherwise null
 	 * @throws Exception the exception
 	 */
-	public void importToMongo(String sModule, String sProject, String sRun, String sTechnology, String mapFilePath, String pedFilePath, int importMode) throws Exception
+	public Integer importToMongo(String sModule, String sProject, String sRun, String sTechnology, String mapFilePath, String pedFilePath, int importMode) throws Exception
 	{
 		long before = System.currentTimeMillis();
         ProgressIndicator progress = ProgressIndicator.get(m_processID);
@@ -213,6 +214,7 @@ public class PlinkImport extends AbstractGenotypeImport {
                 }
 			}
 
+			Integer createdProject = null;
 			// create project if necessary
 			if (project == null || importMode == 2)
 			{	// create it
@@ -220,6 +222,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 				project.setName(sProject);
 				project.setOrigin(2 /* Sequencing */);
 				project.setTechnology(sTechnology);
+				createdProject = project.getId();
 			}
 			project.setPloidyLevel(2);
 
@@ -256,6 +259,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 			progress.moveToNextStep();
 			MgdbDao.prepareDatabaseForSearches(mongoTemplate);
 			progress.markAsComplete();
+			return createdProject;
 		}
 		finally
 		{

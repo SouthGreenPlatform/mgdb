@@ -135,9 +135,10 @@ public class VcfImport extends AbstractGenotypeImport {
      * @param sTechnology the technology
      * @param mainFilePath the main file path
      * @param importMode the import mode
+     * @return a project ID if it was created by this method, otherwise null
      * @throws Exception the exception
      */
-    public void importToMongo(boolean fIsBCF, String sModule, String sProject, String sRun, String sTechnology, String mainFilePath, int importMode) throws Exception {
+    public Integer importToMongo(boolean fIsBCF, String sModule, String sProject, String sRun, String sTechnology, String mainFilePath, int importMode) throws Exception {
         long before = System.currentTimeMillis();
         ProgressIndicator progress = ProgressIndicator.get(m_processID);
         if (progress == null)
@@ -254,12 +255,14 @@ public class VcfImport extends AbstractGenotypeImport {
                 }
             }
 
+            Integer createdProject = null;
             // create project if necessary
             if (project == null || importMode == 2) {	// create it
                 project = new GenotypingProject(AutoIncrementCounter.getNextSequence(mongoTemplate, MongoTemplateManager.getMongoCollectionName(GenotypingProject.class)));
                 project.setName(sProject);
                 project.setOrigin(2 /* Sequencing */);
                 project.setTechnology(sTechnology);
+                createdProject = project.getId();
             }
             project.setPloidyLevel(nPloidy);
 
@@ -382,10 +385,12 @@ public class VcfImport extends AbstractGenotypeImport {
             progress.moveToNextStep();
             MgdbDao.prepareDatabaseForSearches(mongoTemplate);
             progress.markAsComplete();
-        } finally {
-            if (ctx != null) {
+            return createdProject;
+        }
+        finally
+        {
+            if (ctx != null)
                 ctx.close();
-            }
 
             reader.close();
         }
