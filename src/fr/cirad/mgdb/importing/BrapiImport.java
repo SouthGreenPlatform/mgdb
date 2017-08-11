@@ -36,9 +36,11 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.bson.types.ObjectId;
 import org.springframework.context.support.GenericXmlApplicationContext;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -319,6 +321,14 @@ public class BrapiImport extends AbstractGenotypeImport {
 					mongoTemplate.insertAll(variantsToCreate.values());
 				}
 				
+				if (variantsToQueryGenotypesFor.size() > variantsToCreate.size())
+				{	// we already had some of them
+//					Collection<String> skippedVariants = CollectionUtils.disjunction(variantsToQueryGenotypesFor, variantsToCreate.keySet());
+//					List<Comparable> fixedSkippedVariantIdList = skippedVariants.stream().map(str -> ObjectId.isValid(str) ? new ObjectId(str) : str).collect(Collectors.toList());
+					project.getVariantTypes().addAll(mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantData.class)).distinct(VariantData.FIELDNAME_TYPE/*, new Query(Criteria.where("_id").in(fixedSkippedVariantIdList)).getQueryObject()*/));
+					/* FIXME: on big DBs querying just the ones we need leads to a query > 16 Mb */
+				}
+				
 				markerPager.paginate(positions.getMetadata());
 				int nCurrentPage = positions.getMetadata().getPagination().getCurrentPage();
 				int nTotalPageCount = positions.getMetadata().getPagination().getTotalPages();
@@ -452,10 +462,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 							}
 	
 						genotypePager.paginate(br.getMetadata());
-						tempFileWriter.flush();
-//						int nCurrentPage = br.getMetadata().getPagination().getCurrentPage();
-//						int nTotalPageCount = br.getMetadata().getPagination().getTotalPages();
-//						progress.setCurrentStepProgress((int) ((nCurrentPage + 1) * 100f / nTotalPageCount));					
+						tempFileWriter.flush();				
 					}
 		        }
 				tempFileWriter.close();
