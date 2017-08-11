@@ -84,7 +84,7 @@ public class SampleGenotype
 //	private SampleGenotypeId id;
 	
 	/** The code. */
-@Field(FIELDNAME_GENOTYPECODE)
+	@Field(FIELDNAME_GENOTYPECODE)
 	private String code;
 	
 	/** The additional info. */

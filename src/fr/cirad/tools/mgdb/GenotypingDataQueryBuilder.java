@@ -220,8 +220,9 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	 * @param selectedIndividuals the selected individuals
 	 * @param projectEffectAnnotations the project effect annotations
 	 * @param fieldsToReturn the fields to return
+	 * @throws Exception 
 	 */
-	public GenotypingDataQueryBuilder(String sModule, int projId, DBCollection tempExportColl, String operator, Integer genotypeQualityThreshold, Integer readDepthThreshold, Double missingData, Float minmaf, Float maxmaf, String geneNames, String variantEffects, List<String> selectedIndividuals, Collection<String> projectEffectAnnotations, Collection<String> fieldsToReturn)
+	public GenotypingDataQueryBuilder(String sModule, int projId, DBCollection tempExportColl, String operator, Integer genotypeQualityThreshold, Integer readDepthThreshold, Double missingData, Float minmaf, Float maxmaf, String geneNames, String variantEffects, List<String> selectedIndividuals, Collection<String> projectEffectAnnotations, Collection<String> fieldsToReturn) throws Exception
 	{
 		this.mongoTemplate = MongoTemplateManager.get(sModule);
 		this.operator = operator;

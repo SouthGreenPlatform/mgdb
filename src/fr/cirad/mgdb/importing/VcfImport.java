@@ -190,6 +190,7 @@ public class VcfImport extends AbstractGenotypeImport {
 	            {
 	            	nPloidy = vcfEntry.getMaxPloidy(0);
 	            	LOG.info("Found ploidy level of " + nPloidy + " for " + vcfEntry.getType() + " variant " + vcfEntry.getChr() + ":" + vcfEntry.getStart());
+	            	break;
 	            }
             }
             if (importMode == 0 && project != null && project.getPloidyLevel() != nPloidy)
@@ -273,7 +274,7 @@ public class VcfImport extends AbstractGenotypeImport {
             progress.addStep(info);
             progress.moveToNextStep();
 
-            HashMap<String, Comparable> existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate);
+            HashMap<String, Comparable> existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate, false);
             // loop over each variation
             long count = 0;
             int nNumberOfVariantsToSaveAtOnce = 1;
@@ -306,9 +307,8 @@ public class VcfImport extends AbstractGenotypeImport {
                     if (vcfEntry.hasID()) {
                         fAtLeastOneIDProvided = true;
                     }
-                    if (variant == null) {
-                            variant = new VariantData(vcfEntry.hasID() ? vcfEntry.getID() : (fAtLeastOneIDProvided ? "_" + new ObjectId().toString() : new ObjectId()));
-                    }
+                    if (variant == null)
+                    	variant = new VariantData(vcfEntry.hasID() ? vcfEntry.getID() : (fAtLeastOneIDProvided ? "_" + new ObjectId().toString() /* avoid mixing ID types */ : new ObjectId()));
                     unsavedVariants.add(variant);
                     VariantRunData runToSave = addVcfDataToVariant(mongoTemplate, variant, vcfEntry, project, sRun, phasingGroups, previouslyCreatedSamples, effectAnnotationPos, geneNameAnnotationPos);
                     if (!unsavedRuns.contains(runToSave)) {
@@ -556,10 +556,11 @@ public class VcfImport extends AbstractGenotypeImport {
             Comparable phasedGroup = phasingGroup.get(sIndividual);
             if (phasedGroup == null || (!isPhased && !genotype.isNoCall()))
                 phasingGroup.put(sIndividual, variantToFeed.getId());
-
-            SampleGenotype aGT = new SampleGenotype(VariantData.rebuildVcfFormatGenotype(knownAlleleList, genotype.getAlleles(), isPhased, false));
+            
+            List<String> gtAllelesAsStrings = genotype.getAlleles().stream().map(allele -> allele.getBaseString()).collect(Collectors.toList());
+            SampleGenotype aGT = new SampleGenotype(VariantData.rebuildVcfFormatGenotype(knownAlleleList, gtAllelesAsStrings, isPhased, false));
             if (isPhased) {
-                aGT.getAdditionalInfo().put(VariantData.GT_FIELD_PHASED_GT, VariantData.rebuildVcfFormatGenotype(knownAlleleList, genotype.getAlleles(), isPhased, true));
+                aGT.getAdditionalInfo().put(VariantData.GT_FIELD_PHASED_GT, VariantData.rebuildVcfFormatGenotype(knownAlleleList, gtAllelesAsStrings, isPhased, true));
                 aGT.getAdditionalInfo().put(VariantData.GT_FIELD_PHASED_ID, phasingGroup.get(sIndividual));
             }
             if (genotype.hasGQ()) {

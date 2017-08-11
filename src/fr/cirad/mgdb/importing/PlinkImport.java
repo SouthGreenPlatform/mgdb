@@ -226,7 +226,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 			}
 			project.setPloidyLevel(2);
 
-			HashMap<String, Comparable> existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate);			
+			HashMap<String, Comparable> existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate, false);			
 			
 			String info = "Loading variant list from MAP file";
 			LOG.info(info);

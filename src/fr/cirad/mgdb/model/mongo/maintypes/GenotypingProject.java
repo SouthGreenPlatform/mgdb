@@ -188,7 +188,7 @@ public class GenotypingProject {
      * The ploidy level.
      */
     @Field(FIELDNAME_PLOIDY_LEVEL)
-    private int ploidyLevel;
+    private int ploidyLevel = 0;
 
     /**
      * The runs.

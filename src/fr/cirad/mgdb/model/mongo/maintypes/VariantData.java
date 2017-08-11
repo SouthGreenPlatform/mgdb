@@ -535,25 +535,25 @@ public class VariantData
 	 * @return the string
 	 * @throws Exception the exception
 	 */
-	public static String rebuildVcfFormatGenotype(List<String> knownAlleleList, List<Allele> genotypeAlleles, boolean fPhased, boolean keepCurrentPhasingInfo) throws Exception
+	public static String rebuildVcfFormatGenotype(List<String> knownAlleleList, List<String> genotypeAlleles, boolean fPhased, boolean keepCurrentPhasingInfo) throws Exception
 	{
 		String result = "";
-		List<Allele> orderedGenotypeAlleles = new ArrayList<Allele>();
+		List<String> orderedGenotypeAlleles = new ArrayList<String>();
 		orderedGenotypeAlleles.addAll(genotypeAlleles);
-		mainLoop: for (Allele gtA : orderedGenotypeAlleles)
+		mainLoop: for (String gtA : orderedGenotypeAlleles)
 		{
 			String separator = keepCurrentPhasingInfo && fPhased ? "|" : "/";
 			for (int i=0; i<knownAlleleList.size(); i++)
 			{
 				String allele = knownAlleleList.get(i);
-				if (allele.equals(gtA.getBaseString()))
+				if (allele.equals(gtA))
 				{
 					result += (result.length() == 0 ? "" : separator) + i;
 					continue mainLoop;						
 				}
 			}
-			if (!GT_FIELDVAL_AL_MISSING.equals(gtA.getBaseString()))
-				throw new Exception("Unable to find allele '" + gtA.getBaseString() + "' in alternate list");
+			if (!GT_FIELDVAL_AL_MISSING.equals(gtA))
+				throw new Exception("Unable to find allele '" + gtA + "' in alternate list");
 		}
 
 		return result;

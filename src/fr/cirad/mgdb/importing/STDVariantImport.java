@@ -52,6 +52,8 @@ public class STDVariantImport extends AbstractGenotypeImport {
 	
 	private int m_ploidy = 2;
 	private String m_processID;
+	private boolean m_fAllowDbDropIfNoGenotypingData = true;
+	private boolean m_fTryAndMatchRandomObjectIDs = false;
 	
 	public STDVariantImport()
 	{
@@ -63,13 +65,22 @@ public class STDVariantImport extends AbstractGenotypeImport {
 		m_processID = processID;
 	}
 	
-	public STDVariantImport(String processID, int nPloidy)
-	{
-		this();
-		m_ploidy = nPloidy;
-		m_processID = processID;
+	public boolean isAllowedToDropDbIfNoGenotypingData() {
+		return m_fAllowDbDropIfNoGenotypingData;
 	}
 
+	public void allowDbDropIfNoGenotypingData(boolean fAllowDbDropIfNoGenotypingData) {
+		this.m_fAllowDbDropIfNoGenotypingData = fAllowDbDropIfNoGenotypingData;
+	}
+	
+	public boolean triesAndMatchRandomObjectIDs() {
+		return m_fTryAndMatchRandomObjectIDs;
+	}
+
+	public void tryAndMatchRandomObjectIDs(boolean fTryAndMatchRandomObjectIDs) {
+		this.m_fTryAndMatchRandomObjectIDs = fTryAndMatchRandomObjectIDs;
+	}
+	
 	public static void main(String[] args) throws Exception
 	{
 		if (args.length < 5)
@@ -96,8 +107,10 @@ public class STDVariantImport extends AbstractGenotypeImport {
 		long before = System.currentTimeMillis();
 		ProgressIndicator progress = ProgressIndicator.get(m_processID);
 		if (progress == null)
+		{
 			progress = new ProgressIndicator(m_processID, new String[] {"Initializing import"});	// better to add it straight-away so the JSP doesn't get null in return when it checks for it (otherwise it will assume the process has ended)
-		ProgressIndicator.registerProgressIndicator(progress);
+			ProgressIndicator.registerProgressIndicator(progress);
+		}
 		
 		GenericXmlApplicationContext ctx = null;
 		try
@@ -115,7 +128,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 			
 			mongoTemplate.getDb().command(new BasicDBObject("profile", 0));	// disable profiling
 			GenotypingProject project = mongoTemplate.findOne(new Query(Criteria.where(GenotypingProject.FIELDNAME_NAME).is(sProject)), GenotypingProject.class);
-            if (importMode == 0 && project != null && project.getPloidyLevel() != m_ploidy)
+            if (importMode == 0 && project != null && project.getPloidyLevel() > 0 && project.getPloidyLevel() != m_ploidy)
             	throw new Exception("Ploidy levels differ between existing (" + project.getPloidyLevel() + ") and provided (" + m_ploidy + ") data!");
 
 			if (importMode == 2) // drop database before importing
@@ -148,10 +161,9 @@ public class STDVariantImport extends AbstractGenotypeImport {
                     }
 					mongoTemplate.remove(new Query(Criteria.where("_id").is(project.getId())), GenotypingProject.class);
 				}
-                if (mongoTemplate.count(null, VariantRunData.class) == 0 && doesDatabaseSupportImportingUnknownVariants(sModule))
+                if (mongoTemplate.count(null, VariantRunData.class) == 0 && m_fAllowDbDropIfNoGenotypingData && doesDatabaseSupportImportingUnknownVariants(sModule))
                 {	// if there is no genotyping data left and we are not working on a fixed list of variants then any other data is irrelevant
                     mongoTemplate.getDb().dropDatabase();
-//                    project = null;
                 }
 			}
 			
@@ -160,11 +172,11 @@ public class STDVariantImport extends AbstractGenotypeImport {
 			
 			File genotypeFile = new File(mainFilePath);
 	
-            HashMap<String, Comparable> existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate);
+            HashMap<String, Comparable> existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate, m_fTryAndMatchRandomObjectIDs);
 						
 			progress.addStep("Checking genotype consistency");
 			progress.moveToNextStep();
-			
+
 			HashMap<Comparable, ArrayList<String>> inconsistencies = checkSynonymGenotypeConsistency(existingVariantIDs, genotypeFile, sModule + "_" + sProject + "_" + sRun);
 			
 			// first sort genotyping data file by marker name (for faster import)
@@ -218,7 +230,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				project.setTechnology(sTechnology);
 				project.getVariantTypes().add("SNP");
 			}	
-			project.setPloidyLevel(2);
 
 			// import genotyping data
 			progress.addStep("Processing genotype lines by thousands");
@@ -343,6 +354,9 @@ public class STDVariantImport extends AbstractGenotypeImport {
 			for (String individualLine : linesForVariant)
 			{				
 				String[] cells = individualLine.trim().split(" ");
+				if (cells.length - 3 > project.getPloidyLevel())
+					project.setPloidyLevel(cells.length - 3);
+
 				String sIndividualName = cells[1];
 						
 				if (!usedSamples.containsKey(sIndividualName))	// we don't want to persist each sample several times
@@ -396,7 +410,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				{
 					ArrayList<Integer> alleleIndexList = new ArrayList<Integer>();	
 					boolean fAddedSomeAlleles = false;
-					for (int i=3; i<=4; i++)
+					for (int i=3; i<cells.length; i++)
 					{
 						int indexToUse = cells.length > i ? i : i - 1;
 						if (!variant.getKnownAlleleList().contains(cells[indexToUse]))

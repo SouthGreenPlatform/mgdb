@@ -8,18 +8,30 @@ import java.util.HashSet;
 import java.util.Iterator;
 
 import org.apache.log4j.Logger;
+import org.bson.types.ObjectId;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
+import com.mongodb.DuplicateKeyException;
+
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
 import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
+import fr.cirad.mgdb.model.mongodao.MgdbDao;
+import fr.cirad.tools.Helper;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 
 public class AbstractGenotypeImport {
 	
 	private static final Logger LOG = Logger.getLogger(AbstractGenotypeImport.class);
+
+	private static final String COLLECTION_NAME_SYNONYM_MAPPINGS = "synonymMappings";
 	
 	/** String representing nucleotides considered as valid */
 	protected static HashSet<String> validNucleotides = new HashSet<>(Arrays.asList(new String[] {"a", "A", "t", "T", "g", "G", "c", "C"}));
@@ -40,37 +52,83 @@ public class AbstractGenotypeImport {
 		
 		return result;
 	}
+
+//	public static void buildSynonymMappings(MongoTemplate mongoTemplate) throws Exception
+//	{
+//		DBCollection collection = mongoTemplate.getCollection(COLLECTION_NAME_SYNONYM_MAPPINGS);
+//		collection.drop();
+//
+//		long variantCount = mongoTemplate.count(null, VariantData.class);
+//        if (variantCount > 0)
+//        {	// there are already variants in the database: build a list of all existing variants, finding them by ID is by far most efficient
+//            long beforeReadingAllVariants = System.currentTimeMillis();
+//            Query query = new Query();
+//            query.fields().include("_id").include(VariantData.FIELDNAME_REFERENCE_POSITION).include(VariantData.FIELDNAME_TYPE).include(VariantData.FIELDNAME_SYNONYMS);
+//            DBCursor variantIterator = mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantData.class)).find(query.getQueryObject(), query.getFieldsObject());
+//            int i = 0, nDups = 0;
+//			while (variantIterator.hasNext())
+//			{
+//				DBObject vd = variantIterator.next();
+//				boolean fGotChrPos = vd.get(VariantData.FIELDNAME_REFERENCE_POSITION) != null;
+//				ArrayList<String> idAndSynonyms = new ArrayList<>();
+//				idAndSynonyms.add(vd.get("_id").toString());
+//				DBObject synonymsByType = (DBObject) vd.get(VariantData.FIELDNAME_SYNONYMS);
+//				for (String synonymType : synonymsByType.keySet())
+//					for (Object syn : (BasicDBList) synonymsByType.get(synonymType))
+//						idAndSynonyms.add((String) syn.toString());
+//
+//				for (String variantDescForPos : getIdentificationStrings((String) vd.get(VariantData.FIELDNAME_TYPE), !fGotChrPos ? null : (String) Helper.readPossiblyNestedField(vd, VariantData.FIELDNAME_REFERENCE_POSITION + "." + ReferencePosition.FIELDNAME_SEQUENCE), !fGotChrPos ? null : (long) Helper.readPossiblyNestedField(vd, VariantData.FIELDNAME_REFERENCE_POSITION + "." + ReferencePosition.FIELDNAME_START_SITE), idAndSynonyms))
+//				{
+//					BasicDBObject synonymMapping = new BasicDBObject("_id", variantDescForPos);
+//					synonymMapping.put("id", vd.get("_id"));
+//					try
+//					{
+//						collection.insert(synonymMapping);
+//					}
+//					catch (DuplicateKeyException dke)
+//					{
+//						nDups++;
+//						LOG.error(dke.getMessage());
+//					}
+//				}
+//				
+//				float nProgressPercentage = ++i * 100f / variantCount;
+//				if (nProgressPercentage % 10 == 0)
+//					LOG.debug("buildSynonymMappings: " + nProgressPercentage + "%");
+//			}
+//            LOG.info(mongoTemplate.count(null, VariantData.class) + " VariantData record IDs were scanned in " + (System.currentTimeMillis() - beforeReadingAllVariants) / 1000 + "s");
+//            if (nDups > 0)
+//            	LOG.warn(nDups + " duplicates found in database " + mongoTemplate.getDb().getName());
+//        }
+//	}
 	
-	protected static HashMap<String, Comparable> buildSynonymToIdMapForExistingVariants(MongoTemplate mongoTemplate) throws Exception
+	protected static HashMap<String, Comparable> buildSynonymToIdMapForExistingVariants(MongoTemplate mongoTemplate, boolean fIncludeRandomObjectIDs) throws Exception
 	{
         HashMap<String, Comparable> existingVariantIDs = new HashMap<String, Comparable>();
-        if (mongoTemplate.count(null, VariantData.class) > 0)
+		long variantCount = mongoTemplate.count(null, VariantData.class);
+        if (variantCount > 0)
         {	// there are already variants in the database: build a list of all existing variants, finding them by ID is by far most efficient
             long beforeReadingAllVariants = System.currentTimeMillis();
             Query query = new Query();
             query.fields().include("_id").include(VariantData.FIELDNAME_REFERENCE_POSITION).include(VariantData.FIELDNAME_TYPE).include(VariantData.FIELDNAME_SYNONYMS);
-            Iterator<VariantData> variantIterator = mongoTemplate.find(query, VariantData.class).iterator();
+            DBCursor variantIterator = mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantData.class)).find(query.getQueryObject(), query.getFieldsObject());
 			while (variantIterator.hasNext())
 			{
-				VariantData vd = variantIterator.next();
-				ReferencePosition chrPos = vd.getReferencePosition();
-//				if (chrPos == null)
-//				{	// no position data available
-//					variantIterator = null;
-//					LOG.warn("No position data available in existing variants");
-//					continue;
-//				}
+				DBObject vd = variantIterator.next();
+				String variantIdAsString = vd.get("_id").toString();
+				boolean fGotChrPos = vd.get(VariantData.FIELDNAME_REFERENCE_POSITION) != null;
 				ArrayList<String> idAndSynonyms = new ArrayList<>();
-				idAndSynonyms.add(vd.getId().toString());
-				for (Collection<Comparable> syns : vd.getSynonyms().values())
-					for (Comparable syn : syns)
-						idAndSynonyms.add(syn.toString());
+				if (fIncludeRandomObjectIDs || !ObjectId.isValid(variantIdAsString))	// most of the time we avoid taking into account randomly generated IDs
+					idAndSynonyms.add(variantIdAsString);
+				DBObject synonymsByType = (DBObject) vd.get(VariantData.FIELDNAME_SYNONYMS);
+				for (String synonymType : synonymsByType.keySet())
+					for (Object syn : (BasicDBList) synonymsByType.get(synonymType))
+						idAndSynonyms.add((String) syn.toString());
 
-				for (String variantDescForPos : getIdentificationStrings(vd.getType(), chrPos == null ? null : chrPos.getSequence(), chrPos == null ? null : chrPos.getStartSite(), idAndSynonyms))
-					existingVariantIDs.put(variantDescForPos, vd.getId());
+				for (String variantDescForPos : getIdentificationStrings((String) vd.get(VariantData.FIELDNAME_TYPE), !fGotChrPos ? null : (String) Helper.readPossiblyNestedField(vd, VariantData.FIELDNAME_REFERENCE_POSITION + "." + ReferencePosition.FIELDNAME_SEQUENCE), !fGotChrPos ? null : (long) Helper.readPossiblyNestedField(vd, VariantData.FIELDNAME_REFERENCE_POSITION + "." + ReferencePosition.FIELDNAME_START_SITE), idAndSynonyms))
+					existingVariantIDs.put(variantDescForPos, (Comparable) vd.get("_id"));
 			}
-            if (existingVariantIDs.size() > 0)
-                LOG.info(mongoTemplate.count(null, VariantData.class) + " VariantData record IDs were scanned in " + (System.currentTimeMillis() - beforeReadingAllVariants) / 1000 + "s");
+            LOG.info(mongoTemplate.count(null, VariantData.class) + " VariantData record IDs were scanned in " + (System.currentTimeMillis() - beforeReadingAllVariants) / 1000 + "s");
         }
         return existingVariantIDs;
 	}

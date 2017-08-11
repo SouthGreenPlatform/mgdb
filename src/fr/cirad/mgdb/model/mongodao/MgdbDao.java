@@ -65,8 +65,9 @@ public class MgdbDao
 	 *
 	 * @param mongoTemplate the mongo template
 	 * @return the list
+	 * @throws Exception 
 	 */
-	public static List<Comparable> prepareDatabaseForSearches(MongoTemplate mongoTemplate)
+	public static List<Comparable> prepareDatabaseForSearches(MongoTemplate mongoTemplate) throws Exception
 	{
 		// empty count cache
 		mongoTemplate.dropCollection(COLLECTION_NAME_CACHED_COUNTS);
@@ -112,7 +113,15 @@ public class MgdbDao
 			if (cursor != null)
 				q.addCriteria(Criteria.where("_id").gt(ObjectId.isValid(cursor.toString()) ? new ObjectId(cursor.toString()) : cursor));
 			List<VariantData> chunk = mongoTemplate.find(q, VariantData.class);
-			cursor = chunk.get(chunk.size() - 1).getId();
+			try
+			{
+				cursor = chunk.get(chunk.size() - 1).getId();
+			}
+			catch (ArrayIndexOutOfBoundsException aioobe)
+			{
+				if (aioobe.getMessage().equals("-1"))
+					throw new Exception("Database is mixing String and ObjectID types!");
+			}
 			collection.save(new BasicDBObject("_id", cursor));
 			result.add(cursor.toString());
 			LOG.debug("Variant " + cursor + " tagged as position " + nChunkNumber + " (" + (System.currentTimeMillis() - before) + "ms)");
@@ -201,12 +210,12 @@ public class MgdbDao
 		}
 		else if ((variantIdListToRestrictTo != null && variantIdListToRestrictTo.size() > 0) && variants.size() > 1)
 		{
-			if (!variants.get(0).getId().toString().equals(variantIdListToRestrictTo.get(0).toString()))
-				throw new Exception("First returned variant (" + variants.get(0).getId() + ") differs from first requested variant (" +variantIdListToRestrictTo.get(0) + ")");
-			if (!variants.get(variants.size() - 1).getId().toString().equals(variantIdListToRestrictTo.get(variants.size() - 1).toString()))
-				throw new Exception("Last returned variant (" + variants.get(variants.size() - 1).getId() + ") differs from last requested variant (" +variantIdListToRestrictTo.get(variants.size() - 1) + ")");
+//			if (!variants.get(0).getId().toString().equals(variantIdListToRestrictTo.get(0).toString()))
+//				throw new Exception("First returned variant (" + variants.get(0).getId() + ") differs from first requested variant (" +variantIdListToRestrictTo.get(0) + ")");
+//			if (!variants.get(variants.size() - 1).getId().toString().equals(variantIdListToRestrictTo.get(variants.size() - 1).toString()))
+//				throw new Exception("Last returned variant (" + variants.get(variants.size() - 1).getId() + ") differs from last requested variant (" +variantIdListToRestrictTo.get(variants.size() - 1) + ")");
 		}
-			
+
 		LinkedHashMap<VariantData, Collection<VariantRunData>> result = new LinkedHashMap<VariantData, Collection<VariantRunData>>();
 		for (Comparable variantId : variantIdListToRestrictTo)
 			result.put(variantIdToVariantMap.get(ObjectId.isValid(variantId.toString()) ? new ObjectId(variantId.toString()) : variantId), new ArrayDeque<VariantRunData>());
