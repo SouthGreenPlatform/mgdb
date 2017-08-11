@@ -21,6 +21,7 @@ package fr.cirad.mgdb.model.mongo.maintypes;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -212,7 +213,7 @@ public class GenotypingProject {
      * The variant types.
      */
     @Field(FIELDNAME_VARIANT_TYPES)
-    private List<String> variantTypes = new ArrayList<String>();
+    private LinkedHashSet<String> variantTypes = new LinkedHashSet<String>();
 
     /**
      * The effect annotations.
@@ -472,7 +473,7 @@ public class GenotypingProject {
      *
      * @return the variant types
      */
-    public List<String> getVariantTypes() {
+    public LinkedHashSet<String> getVariantTypes() {
         return variantTypes;
     }
 
@@ -481,7 +482,7 @@ public class GenotypingProject {
      *
      * @param variantTypes the new variant types
      */
-    public void setVariantTypes(List<String> variantTypes) {
+    public void setVariantTypes(LinkedHashSet<String> variantTypes) {
         this.variantTypes = variantTypes;
     }
 
