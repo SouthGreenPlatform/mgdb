@@ -222,7 +222,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 
 			CallsUtils callsUtils = new CallsUtils(calls);
 			boolean fMayUseTsv = callsUtils.hasCall("allelematrix-search/status/{id}", CallsUtils.JSON, CallsUtils.POST);
-//			fMayUseTsv=false;
+			fMayUseTsv=false;
 			client.setMapID(mapDbId);
 			
 			Pager markerPager = new Pager();
@@ -422,6 +422,8 @@ public class BrapiImport extends AbstractGenotypeImport {
 						URI uri = new URI(statusPoll.getMetadata().getDatafiles().get(0));
 						FileUtils.copyURLToFile(uri.toURL(), tempFile);
 
+						if (existingVariantIDs.isEmpty())
+							existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate, true);	// update it
 						importTsvToMongo(sModule, project, sRun, sTechnology, tempFile.getAbsolutePath(), profileToGermplasmMap, importMode, existingVariantIDs);
 						return;	//finished
 					}
