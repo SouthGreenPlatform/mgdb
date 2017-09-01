@@ -20,6 +20,7 @@ package fr.cirad.tools.security.base;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.text.ParseException;
 
 import org.apache.log4j.Logger;
 import org.springframework.security.core.Authentication;
@@ -29,19 +30,26 @@ import org.springframework.stereotype.Component;
 public abstract class AbstractTokenManager {
 
     static private final Logger LOG = Logger.getLogger(AbstractTokenManager.class);
-    
+        
 	static public final String ENTITY_PROJECT = "project";
 	static public final String ROLE_READER = "READER";
 
-    abstract public String createAndAttachToken(int nMaxInactiveSeconds, String username, String password) throws IllegalArgumentException, IOException;
+    abstract public String createAndAttachToken(String username, String password) throws IllegalArgumentException, IOException;
     
     abstract public Authentication getAuthenticationFromToken(String token);
-
-    abstract public boolean detachAuthenticationFromToken(String token);
-    
+ 
     abstract public boolean removeToken(String token);
+    abstract public String generateToken(Authentication auth) throws IllegalArgumentException, UnsupportedEncodingException;
 
-    abstract public void attachAuthenticationToToken(String token, Authentication auth);
+    abstract public boolean canUserReadProject(String token, String module, Comparable projectId);
+    abstract public boolean canUserReadProject(Authentication authentication, String module, Comparable projectId);
+    
+    abstract public boolean canUserReadDB(String token, String module);    
+    abstract public boolean canUserReadDB(Authentication authentication, String module);
 
-    abstract public String generateToken(int nMaxInactiveSeconds) throws IllegalArgumentException, UnsupportedEncodingException;
+	abstract public void cleanupTokenMap() throws ParseException;
+	
+    abstract public int getSessionTimeoutInSeconds();
+
+    abstract public void setSessionTimeoutInSeconds(int sessionTimeoutInSeconds);
 }
