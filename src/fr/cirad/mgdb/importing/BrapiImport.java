@@ -222,7 +222,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 
 			CallsUtils callsUtils = new CallsUtils(calls);
 			boolean fMayUseTsv = callsUtils.hasCall("allelematrix-search/status/{id}", CallsUtils.JSON, CallsUtils.POST);
-			fMayUseTsv=false;
+//			fMayUseTsv=false;
 			client.setMapID(mapDbId);
 			
 			Pager markerPager = new Pager();
