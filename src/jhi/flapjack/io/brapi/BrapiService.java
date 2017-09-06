@@ -26,8 +26,8 @@ public interface BrapiService
 	@GET("studies-search")
 	Call<BrapiListResource<BrapiStudies>> getStudies(@Query("studyType") String studyType, @Query("pageSize") String pageSize, @Query("page") String page);
 
-	@GET("studies/{studyDbId}/germplasm")
-	Call<BrapiListResource<BrapiGermplasm>> getStudyGerplasmDetails(@Path("studyDbId") String studyDbId, @Query("pageSize") String pageSize, @Query("page") String page);
+	@GET("studies/{id}/germplasm")
+	Call<BrapiListResource<BrapiGermplasm>> getStudyGerplasmDetails(@Path("id") String studyDbId, @Query("pageSize") String pageSize, @Query("page") String page);
 	
 	@GET("maps")
 	Call<BrapiListResource<BrapiGenomeMap>> getMaps(@Query("species") String species, @Query("pageSize") String pageSize, @Query("page") String page);
@@ -49,6 +49,6 @@ public interface BrapiService
 	@POST("allelematrix-search")
 	Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix_byPost(@Field("markerprofileDbId") List<String> markerProfileDbIds, @Field("markerDbId") List<String> markerDbIds, @Field("format") String format, @Field("expandHomozygotes") Boolean expandHomozygotes, @Field("unknownString") String unknownString, @Field("sepPhased") String sepPhased, @Field("sepUnphased") String sepUnphased, @Field("pageSize") String pageSize, @Field("page") String page);
 	
-	@GET("allelematrix-search/status/{extractId}")
-	Call<BrapiBaseResource<Object>> getAlleleMatrixStatus(@Path("extractId") String extractId);
+	@GET("allelematrix-search/status/{id}")
+	Call<BrapiBaseResource<Object>> getAlleleMatrixStatus(@Path("id") String extractId);
 }
