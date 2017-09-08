@@ -233,7 +233,7 @@ public class VcfImport extends AbstractGenotypeImport {
             }
 
             VCFHeader header = (VCFHeader) reader.getHeader();
-            int effectAnnotationPos = -1, geneNameAnnotationPos = -1;
+            int effectAnnotationPos = -1, geneIdAnnotationPos = -1;
             for (VCFInfoHeaderLine headerLine : header.getInfoHeaderLines()) {
                 if ("EFF".equals(headerLine.getID()) || "ANN".equals(headerLine.getID())) {
                     String desc = headerLine.getDescription().replaceAll("\\(", "").replaceAll("\\)", "");
@@ -241,14 +241,14 @@ public class VcfImport extends AbstractGenotypeImport {
                     String[] fields = desc.split("\\|");
                     for (i = 0; i<fields.length; i++) {
                         String trimmedField = fields[i].trim();
-                        if ("Gene_Name".equals(trimmedField)) {
-                            geneNameAnnotationPos = i;
+                        if ("Gene_ID".equals(trimmedField)) {
+                            geneIdAnnotationPos = i;
                             if (effectAnnotationPos != -1) {
                                 break;
                             }
                         } else if ("Annotation".equals(trimmedField)) {
                             effectAnnotationPos = i;
-                            if (geneNameAnnotationPos != -1) {
+                            if (geneIdAnnotationPos != -1) {
                                 break;
                             }
                         }
@@ -310,7 +310,7 @@ public class VcfImport extends AbstractGenotypeImport {
                     if (variant == null)
                     	variant = new VariantData(vcfEntry.hasID() ? vcfEntry.getID() : (fAtLeastOneIDProvided ? "_" + new ObjectId().toString() /* avoid mixing ID types */ : new ObjectId()));
                     unsavedVariants.add(variant);
-                    VariantRunData runToSave = addVcfDataToVariant(mongoTemplate, variant, vcfEntry, project, sRun, phasingGroups, previouslyCreatedSamples, effectAnnotationPos, geneNameAnnotationPos);
+                    VariantRunData runToSave = addVcfDataToVariant(mongoTemplate, variant, vcfEntry, project, sRun, phasingGroups, previouslyCreatedSamples, effectAnnotationPos, geneIdAnnotationPos);
                     if (!unsavedRuns.contains(runToSave)) {
                         unsavedRuns.add(runToSave);
                     }
@@ -407,11 +407,11 @@ public class VcfImport extends AbstractGenotypeImport {
      * @param phasingGroup the phasing group
      * @param usedSamples the used samples
      * @param effectAnnotationPos the effect annotation pos
-     * @param geneNameAnnotationPos the gene name annotation pos
+     * @param geneIdAnnotationPos the gene name annotation pos
      * @return the variant run data
      * @throws Exception the exception
      */
-    static private VariantRunData addVcfDataToVariant(MongoTemplate mongoTemplate, VariantData variantToFeed, VariantContext vc, GenotypingProject project, String runName, HashMap<String /*individual*/, Comparable> phasingGroup, Map<String /*individual*/, SampleId> usedSamples, int effectAnnotationPos, int geneNameAnnotationPos) throws Exception
+    static private VariantRunData addVcfDataToVariant(MongoTemplate mongoTemplate, VariantData variantToFeed, VariantContext vc, GenotypingProject project, String runName, HashMap<String /*individual*/, Comparable> phasingGroup, Map<String /*individual*/, SampleId> usedSamples, int effectAnnotationPos, int geneIdAnnotationPos) throws Exception
     {
         // mandatory fields
         if (variantToFeed.getType() == null) {
@@ -455,7 +455,7 @@ public class VcfImport extends AbstractGenotypeImport {
         // actual VCF info fields
         Map<String, Object> attributes = vc.getAttributes();
         for (String key : attributes.keySet()) {
-            if (geneNameAnnotationPos != -1 && ("EFF".equals(key) || "ANN".equals(key))) {
+            if (geneIdAnnotationPos != -1 && ("EFF".equals(key) || "ANN".equals(key))) {
                 Object effectAttr = vc.getAttribute(key);
                 List<String> effectList = effectAttr instanceof String ? Arrays.asList((String) effectAttr) : (List<String>) vc.getAttribute(key);
                 for (String effect : effectList) {
@@ -471,7 +471,7 @@ public class VcfImport extends AbstractGenotypeImport {
                         if (sEffect != null) {
                             aiEffect.add(sEffect);
                         }
-                        aiGene.add(fields.get(geneNameAnnotationPos));
+                        aiGene.add(fields.get(geneIdAnnotationPos));
                     }
                 }
                 info.put(VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_GENE, aiGene);
