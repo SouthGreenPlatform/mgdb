@@ -110,32 +110,6 @@ public class BrapiClient
 	public boolean hasMapsMapDbId()
 		{ return callsUtils.hasMapsMapDbId(); }
 
-	public boolean doAuthentication()
-		throws Exception
-	{
-		if (true)
-			return false;
-
-		if (username == null && password == null)
-			return false;
-
-		BrapiSessionToken token = service.getAuthToken("password", enc(username), enc(password), "flapjack")
-			.execute()
-			.body();
-
-//		String params = "grant_type=password&username=" + enc(username)
-//			+ "&password=" + enc(password) + "&client_id=flapjack";
-//		Form form = new Form(params);
-//
-//		BrapiSessionToken token = cr.post(form.getWebRepresentation(), BrapiSessionToken.class);
-//
-//		// Add the token information to all further calls
-//		ChallengeResponse challenge = new ChallengeResponse(ChallengeScheme.HTTP_OAUTH_BEARER);
-//		challenge.setRawValue(token.getSessionToken());
-//		cr.setChallengeResponse(challenge);
-		return false;
-	}
-
 	public BrapiService getService() {
 		return service;
 	}
