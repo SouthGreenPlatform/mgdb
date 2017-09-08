@@ -36,11 +36,11 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections.CollectionUtils;
+import javax.servlet.http.HttpServletResponse;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.bson.types.ObjectId;
 import org.springframework.context.support.GenericXmlApplicationContext;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -51,7 +51,6 @@ import org.springframework.data.mongodb.core.query.Update;
 import com.mongodb.BasicDBObject;
 import com.mongodb.WriteResult;
 
-import fr.cirad.mgdb.exporting.IExportHandler;
 import fr.cirad.mgdb.importing.base.AbstractGenotypeImport;
 import fr.cirad.mgdb.model.mongo.maintypes.AutoIncrementCounter;
 import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader;
@@ -68,7 +67,6 @@ import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
-
 import jhi.brapi.api.BrapiBaseResource;
 import jhi.brapi.api.BrapiListResource;
 import jhi.brapi.api.Status;
@@ -83,7 +81,6 @@ import jhi.flapjack.io.brapi.BrapiClient;
 import jhi.flapjack.io.brapi.BrapiClient.Pager;
 import jhi.flapjack.io.brapi.BrapiService;
 import jhi.flapjack.io.brapi.CallsUtils;
-
 import retrofit2.Call;
 import retrofit2.Response;
 
@@ -221,7 +218,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 			}
 
 			CallsUtils callsUtils = new CallsUtils(calls);
-			boolean fMayUseTsv = callsUtils.hasCall("allelematrix-search/status/{id}", CallsUtils.JSON, CallsUtils.POST);
+			boolean fMayUseTsv = callsUtils.hasCall("allelematrix-search/status/{id}", CallsUtils.JSON, CallsUtils.GET);
 //			fMayUseTsv=false;
 			client.setMapID(mapDbId);
 			
@@ -256,10 +253,11 @@ public class BrapiImport extends AbstractGenotypeImport {
 			ArrayList<String> variantsToQueryGenotypesFor = new ArrayList<>();
 			while (markerPager.isPaging())
 			{
-				LOG.debug("querying page " + markerPager.getPage());
-				BrapiListResource<BrapiMarkerPosition> positions = service.getMapMarkerData(mapDbId, markerPager.getPageSize(), markerPager.getPage())
-					.execute()
-					.body();
+				LOG.debug("Querying marker page " + markerPager.getPage());
+				Response<BrapiListResource<BrapiMarkerPosition>> response = service.getMapMarkerData(mapDbId, markerPager.getPageSize(), markerPager.getPage()).execute();
+					if (!response.isSuccessful())
+						throw new Exception(new String(response.errorBody().bytes()));
+				 BrapiListResource<BrapiMarkerPosition> positions = response.body();
 		
 				Map<String, VariantData> variantsToCreate = new HashMap<String, VariantData>();
 				for (BrapiMarkerPosition bmp : positions.data())
@@ -282,10 +280,13 @@ public class BrapiImport extends AbstractGenotypeImport {
 					
 					while (subPager.isPaging())
 					{
-						BrapiListResource<BrapiMarker> markerInfo = service.getMarkerInfo(variantsToCreate.keySet(), "exact", null, null, subPager.getPageSize(), subPager.getPage())
-							.execute()
-							.body();
-						
+						Response<BrapiListResource<BrapiMarker>> markerReponse = service.getMarkerInfo_byPost(variantsToCreate.keySet(), "exact", null, null, subPager.getPageSize(), subPager.getPage()).execute();
+						if (HttpServletResponse.SC_METHOD_NOT_ALLOWED == markerReponse.code())
+							markerReponse = service.getMarkerInfo(variantsToCreate.keySet(), "exact", null, null, subPager.getPageSize(), subPager.getPage()).execute();	// try with GET
+						if (!markerReponse.isSuccessful())
+							throw new Exception(new String(markerReponse.errorBody().bytes()));
+
+						BrapiListResource<BrapiMarker> markerInfo = markerReponse.body();
 						for (BrapiMarker marker : markerInfo.data())
 						{
 							VariantData variant = variantsToCreate.get(marker.getMarkerDbId());
@@ -371,11 +372,10 @@ public class BrapiImport extends AbstractGenotypeImport {
 			{	// first call to initiate data export on server-side
 				Pager genotypePager = new Pager();
 				Response<BrapiBaseResource<BrapiAlleleMatrix>> response = service.getAlleleMatrix_byPost(markerProfileIDs, null, CallsUtils.TSV, true, "", URLEncoder.encode("|", "UTF-8"), "/", genotypePager.getPageSize(), genotypePager.getPage()).execute();
-				BrapiBaseResource<BrapiAlleleMatrix> br = response.body();
-				if (response.isSuccessful())
-					br = response.body();
-				else
+				if (!response.isSuccessful())
 					throw new Exception(new String(response.errorBody().bytes()));
+				
+				BrapiBaseResource<BrapiAlleleMatrix> br = response.body();
 				List<Status> statusList = br.getMetadata().getStatus();
 				String extractId = statusList != null && statusList.size() > 0 && statusList.get(0).getCode().equals("asynchid") ? statusList.get(0).getMessage() : null;
 				
