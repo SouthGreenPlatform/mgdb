@@ -416,7 +416,13 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 				initialMatchList.add(new BasicDBObject(VariantRunData.SECTION_ADDITIONAL_INFO + "." + VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME, new BasicDBObject("$in", Helper.split(variantEffects, ","))));
         }
 		
-        boolean fMultiRunProject = genotypingProject.getRuns().size() > 1;
+        boolean fGotIndividualsWithMultipleSamples = false;
+		for (List<Integer> sampleList : individualIndexToSampleListMap.values())
+			if (sampleList.size() > 1)
+				{
+					fGotIndividualsWithMultipleSamples = true;
+					break;
+				}
         
         DBObject project = new BasicDBObject();
         if (fieldsToReturn.size() > 0)
@@ -467,7 +473,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 					groupFields.put(pathToGQ.replaceAll("\\.", "¤"), new BasicDBObject("$addToSet", "$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + pathToGQ));
 					
 					BasicDBList qualTooLowList = new BasicDBList();
-					qualTooLowList.add(fMultiRunProject ? new BasicDBObject("$arrayElemAt", new Object[] {"$" + pathToGQ.replaceAll("\\.", "¤"), 0}) : ("$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + pathToGQ));
+					qualTooLowList.add(fGotIndividualsWithMultipleSamples ? new BasicDBObject("$arrayElemAt", new Object[] {"$" + pathToGQ.replaceAll("\\.", "¤"), 0}) : ("$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + pathToGQ));
 					qualTooLowList.add(genotypeQualityThreshold);
 
 					BasicDBObject qualTooLow = new BasicDBObject("$lt", qualTooLowList);
@@ -479,7 +485,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 					groupFields.put(pathToDP.replaceAll("\\.", "¤"), new BasicDBObject("$addToSet", "$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + pathToDP));
 
 					BasicDBList depthTooLowList = new BasicDBList();
-					depthTooLowList.add(fMultiRunProject ? new BasicDBObject("$arrayElemAt", new Object[] {"$" + pathToDP.replaceAll("\\.", "¤"), 0}) : ("$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + pathToDP));
+					depthTooLowList.add(fGotIndividualsWithMultipleSamples ? new BasicDBObject("$arrayElemAt", new Object[] {"$" + pathToDP.replaceAll("\\.", "¤"), 0}) : ("$" + VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + pathToDP));
 					depthTooLowList.add(readDepthThreshold);
 
 					BasicDBObject depthTooLow = new BasicDBObject("$lt", depthTooLowList);
@@ -494,18 +500,18 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
                 {	// count alternate alleles
                 	BasicDBList condList = new BasicDBList();
                     String allRefGtCode = genotypingProject.getPloidyLevel() != 1 ? "0/0" : "0";
-                    condList.add(new BasicDBObject("$eq", new Object[] {fMultiRunProject ? ("$$u" + j) : (possiblyConstrainedPathToGT), fMultiRunProject ? new Object[] {allRefGtCode} : allRefGtCode}));
+                    condList.add(new BasicDBObject("$eq", new Object[] {fGotIndividualsWithMultipleSamples ? ("$$u" + j) : (possiblyConstrainedPathToGT), fGotIndividualsWithMultipleSamples ? new Object[] {allRefGtCode} : allRefGtCode}));
                     condList.add(0);
                     if (genotypingProject.getPloidyLevel() == 1)
                         condList.add(2);
                     else
-                    	condList.add(new BasicDBObject("$add", new Object[] {1, new BasicDBObject("$cmp",  new Object[] {fMultiRunProject ? ("$$u" + j) : (possiblyConstrainedPathToGT), fMultiRunProject ? new Object[] {"0/1"} : "0/1"})}));
+                    	condList.add(new BasicDBObject("$add", new Object[] {1, new BasicDBObject("$cmp",  new Object[] {fGotIndividualsWithMultipleSamples ? ("$$u" + j) : (possiblyConstrainedPathToGT), fGotIndividualsWithMultipleSamples ? new Object[] {"0/1"} : "0/1"})}));
                     altAlleleCountList.add(new BasicDBObject("$cond", condList));
                 }
 
                 if (fMissingDataApplied || fMafApplied || fCompareBetweenGenotypes)
                 {	// count missing genotypes
-                	if (fMultiRunProject)
+                	if (fGotIndividualsWithMultipleSamples)
                 		missingGenotypeCountList.add(new BasicDBObject("$abs", new BasicDBObject("$cmp", new Object[] {new BasicDBObject("$size", "$$u" + j), 1})));
                 	else
                 	{
@@ -516,7 +522,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
                 
                 if (fCompareBetweenGenotypes || fZygosityRegex || fIsWithoutAbnormalHeterozygosityQuery)
                 {	// count distinct non-missing genotypes
-                	if (fMultiRunProject)
+                	if (fGotIndividualsWithMultipleSamples)
                 	{
 	                	BasicDBList condList = new BasicDBList();
 	                    condList.add(new BasicDBObject("$eq", new Object[] {1, new BasicDBObject("$size", "$$u" + j)}));
@@ -551,7 +557,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 		
 		if (fCompareBetweenGenotypes)
 		{
-			if (fMultiRunProject)
+			if (fGotIndividualsWithMultipleSamples)
 				in.put("dc", new BasicDBObject("$size", new BasicDBObject("$setUnion", distinctGenotypeList)));	//  number of distinct non-missing genotypes in selected population (all same, not all same, all different, not all different)
 			else
 			{
@@ -563,7 +569,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 		}
 		else if (fZygosityRegex || fIsWithoutAbnormalHeterozygosityQuery)
 		{	//  distinct non-missing genotypes in selected population (zygosity comparison)
-			if (fMultiRunProject)
+			if (fGotIndividualsWithMultipleSamples)
 				in.put("d", new BasicDBObject("$setUnion", distinctGenotypeList));
 			else
 			{
@@ -658,7 +664,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 		let.put("in", in);
 		project.put("g", new BasicDBObject("$let", let));
 
-		if (fMultiRunProject)
+		if (fGotIndividualsWithMultipleSamples)
 			pipeline.add(new BasicDBObject("$group", groupFields));
 		if (!project.keySet().isEmpty())
 			pipeline.add(new BasicDBObject("$project", project));
@@ -728,9 +734,10 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 			 pipeline.add(new BasicDBObject("$match", new BasicDBObject("$and", mainMatchList)));
 		
         if (fieldsToReturn.size() == 0)	// reduce output size to the minimum if we are not loading fields for display
-        	pipeline.add(new BasicDBObject("$project", new BasicDBObject("_id", "$_id" + (!fMultiRunProject ? "." + VariantRunDataId.FIELDNAME_VARIANT_ID : ""))));
+        	pipeline.add(new BasicDBObject("$project", new BasicDBObject("_id", "$_id" + (!fGotIndividualsWithMultipleSamples ? "." + VariantRunDataId.FIELDNAME_VARIANT_ID : ""))));
 
-//        System.out.println(pipeline.subList(1, pipeline.size()));
+//        if (nNextCallCount == 1)
+//        	System.out.println(pipeline.subList(1, pipeline.size()));
         return pipeline;
     }
 		
