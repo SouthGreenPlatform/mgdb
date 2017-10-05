@@ -52,6 +52,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 	
 	private int m_ploidy = 2;
 	private String m_processID;
+	private boolean fImportUnknownVariants = false;
 	private boolean m_fAllowDbDropIfNoGenotypingData = true;
 	private boolean m_fTryAndMatchRandomObjectIDs = false;
 	
@@ -130,6 +131,8 @@ public class STDVariantImport extends AbstractGenotypeImport {
 			GenotypingProject project = mongoTemplate.findOne(new Query(Criteria.where(GenotypingProject.FIELDNAME_NAME).is(sProject)), GenotypingProject.class);
             if (importMode == 0 && project != null && project.getPloidyLevel() > 0 && project.getPloidyLevel() != m_ploidy)
             	throw new Exception("Ploidy levels differ between existing (" + project.getPloidyLevel() + ") and provided (" + m_ploidy + ") data!");
+            
+			fImportUnknownVariants = doesDatabaseSupportImportingUnknownVariants(sModule);
 
 			if (importMode == 2) // drop database before importing
 				mongoTemplate.getDb().dropDatabase();
@@ -228,8 +231,8 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				project.setName(sProject);
 				project.setOrigin(1 /* SNP chip */);
 				project.setTechnology(sTechnology);
-				project.getVariantTypes().add("SNP");
-			}	
+				project.getVariantTypes().add(Type.SNP.toString());
+			}
 
 			// import genotyping data
 			progress.addStep("Processing genotype lines by thousands");
@@ -256,11 +259,11 @@ public class STDVariantImport extends AbstractGenotypeImport {
 						if (sPreviousVariant != null)
 						{	// save variant
 							Comparable mgdbVariantId = existingVariantIDs.get(sPreviousVariant.toUpperCase());
-							if (mgdbVariantId == null)
-								LOG.warn("Unknown id: " + sPreviousVariant);
-							else if (mgdbVariantId.toString().startsWith("*"))
+							if (mgdbVariantId == null && !fImportUnknownVariants)
+								LOG.warn("Skipping unknown variant: " + mgdbVariantId);
+							else if (mgdbVariantId != null && mgdbVariantId.toString().startsWith("*"))
 								LOG.warn("Skipping deprecated variant data: " + sPreviousVariant);
-							else if (saveWithOptimisticLock(mongoTemplate, project, sRun, mgdbVariantId, individualPopulations, inconsistencies, linesForVariant, 3, previouslySavedSamples, affectedSequences))
+							else if (saveWithOptimisticLock(mongoTemplate, project, sRun, mgdbVariantId != null ? mgdbVariantId : sPreviousVariant, individualPopulations, inconsistencies, linesForVariant, 3, previouslySavedSamples, affectedSequences))
 								nVariantSaveCount++;
 							else
 								unsavedVariants.add(sVariantName);
@@ -281,27 +284,27 @@ public class STDVariantImport extends AbstractGenotypeImport {
 			while (sLine != null);		
 
 			Comparable mgdbVariantId = existingVariantIDs.get(sVariantName.toUpperCase());	// when saving the last variant there is not difference between sVariantName and sPreviousVariant
-			if (mgdbVariantId == null)
-				LOG.warn("Unknown id: " + sPreviousVariant);
-			else if (mgdbVariantId.toString().startsWith("*"))
+			if (mgdbVariantId == null && !fImportUnknownVariants)
+				LOG.warn("Skipping unknown variant: " + mgdbVariantId);
+			else if (mgdbVariantId != null && mgdbVariantId.toString().startsWith("*"))
 				LOG.warn("Skipping deprecated variant data: " + sPreviousVariant);
-			else if (saveWithOptimisticLock(mongoTemplate, project, sRun, mgdbVariantId, individualPopulations, inconsistencies, linesForVariant, 3, previouslySavedSamples, affectedSequences))
+			else if (saveWithOptimisticLock(mongoTemplate, project, sRun, mgdbVariantId != null ? mgdbVariantId : sPreviousVariant, individualPopulations, inconsistencies, linesForVariant, 3, previouslySavedSamples, affectedSequences))
 				nVariantSaveCount++;
 			else
 				unsavedVariants.add(sVariantName);
 	
 			in.close();
 			sortedFile.delete();
-				
+							
+			// save project data
             if (!project.getVariantTypes().contains(Type.SNP.toString())) {
                 project.getVariantTypes().add(Type.SNP.toString());
             }
             project.getSequences().addAll(affectedSequences);
-			
-			// save project data
-            if (!project.getRuns().contains(sRun)) {
+            if (!project.getRuns().contains(sRun))
                 project.getRuns().add(sRun);
-            }
+            if (project.getPloidyLevel() == 0)
+            	project.setPloidyLevel(m_ploidy);
 			mongoTemplate.save(project);
 	
 	    	LOG.info("Import took " + (System.currentTimeMillis() - before)/1000 + "s for " + lineCount + " CSV lines (" + nVariantSaveCount + " variants were saved)");
@@ -320,7 +323,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 		}
 	}
 	
-	private static boolean saveWithOptimisticLock(MongoTemplate mongoTemplate, GenotypingProject project, String runName, Comparable mgdbVariantId, HashMap<String, String> individualPopulations, HashMap<Comparable, ArrayList<String>> inconsistencies, ArrayList<String> linesForVariant, int nNumberOfRetries, Map<String, SampleId> usedSamples, TreeSet<String> affectedSequences) throws Exception
+	private boolean saveWithOptimisticLock(MongoTemplate mongoTemplate, GenotypingProject project, String runName, Comparable mgdbVariantId, HashMap<String, String> individualPopulations, HashMap<Comparable, ArrayList<String>> inconsistencies, ArrayList<String> linesForVariant, int nNumberOfRetries, Map<String, SampleId> usedSamples, TreeSet<String> affectedSequences) throws Exception
 	{
 		if (linesForVariant.size() == 0)
 			return false;
@@ -354,9 +357,6 @@ public class STDVariantImport extends AbstractGenotypeImport {
 			for (String individualLine : linesForVariant)
 			{				
 				String[] cells = individualLine.trim().split(" ");
-				if (cells.length - 3 > project.getPloidyLevel())
-					project.setPloidyLevel(cells.length - 3);
-
 				String sIndividualName = cells[1];
 						
 				if (!usedSamples.containsKey(sIndividualName))	// we don't want to persist each sample several times
@@ -406,13 +406,13 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				boolean fInconsistentData = inconsistentIndividuals != null && inconsistentIndividuals.contains(sIndividualName);
 				if (fInconsistentData)
 					LOG.warn("Not adding inconsistent data: " + sVariantName + " / " + sIndividualName);
-				else
+				else if (cells.length > 3)
 				{
 					ArrayList<Integer> alleleIndexList = new ArrayList<Integer>();	
 					boolean fAddedSomeAlleles = false;
-					for (int i=3; i<cells.length; i++)
+					for (int i=3; i<3 + m_ploidy; i++)
 					{
-						int indexToUse = cells.length > i ? i : i - 1;
+						int indexToUse = cells.length == 3 + m_ploidy ? i : 3;	// support for collapsed homozygous genotypes
 						if (!variant.getKnownAlleleList().contains(cells[indexToUse]))
 						{
 							variant.getKnownAlleleList().add(cells[indexToUse]);	// it's the first time we encounter this alternate allele for this variant
@@ -485,7 +485,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 				if (mgdbId == null)
 					mgdbId = splittedLine[2];
 				else if (mgdbId.toString().startsWith("*"))
-					continue;	// this is a deprecated SNP
+					continue;	// this is a deprecated variant
 
 				sSampleName = splittedLine[1];
 				if (!sSampleName.equals(sPreviousSample))
@@ -501,7 +501,7 @@ public class STDVariantImport extends AbstractGenotypeImport {
 					genotypesByVariant.put(mgdbId, synonymsByGenotype);
 				}
 
-				String genotype = splittedLine[3] + "," + splittedLine[splittedLine.length > 4 ? 4 : 3];
+				String genotype = splittedLine.length < 4 ? "" : (splittedLine[3] + "," + splittedLine[splittedLine.length > 4 ? 4 : 3]);
 				String synonymsWithGenotype = synonymsByGenotype.get(genotype);
 				synonymsByGenotype.put(genotype, synonymsWithGenotype == null ? splittedLine[2] : (synonymsWithGenotype + ";" + splittedLine[2]));
 				if (synonymsByGenotype.size() > 1)
@@ -529,5 +529,9 @@ public class STDVariantImport extends AbstractGenotypeImport {
 		LOG.info("Inconsistency and missing data file was saved to the following location: " + stdFile.getParentFile().getAbsolutePath());
 
 		return result;
+	}
+
+	public void setPloidy(int ploidy) {
+		m_ploidy = ploidy;
 	}
 }
