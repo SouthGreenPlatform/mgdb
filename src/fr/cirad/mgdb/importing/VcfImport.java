@@ -237,16 +237,16 @@ public class VcfImport extends AbstractGenotypeImport {
             for (VCFInfoHeaderLine headerLine : header.getInfoHeaderLines()) {
                 if ("EFF".equals(headerLine.getID()) || "ANN".equals(headerLine.getID())) {
                     String desc = headerLine.getDescription().replaceAll("\\(", "").replaceAll("\\)", "");
-                    desc = desc.substring(0, desc.lastIndexOf("'")).substring(desc.indexOf("'"));
+                    desc = desc.substring(1 + desc.indexOf(":")).replace("'", "");
                     String[] fields = desc.split("\\|");
                     for (i = 0; i<fields.length; i++) {
                         String trimmedField = fields[i].trim();
-                        if ("Gene_ID".equals(trimmedField)) {
+                        if (/*snpeff*/ "Gene_ID".equals(trimmedField) || /*vep*/ "Gene".equals(trimmedField)) {
                             geneIdAnnotationPos = i;
                             if (effectAnnotationPos != -1) {
                                 break;
                             }
-                        } else if ("Annotation".equals(trimmedField)) {
+                        } else if (/*snpeff*/ "Annotation".equals(trimmedField) || /*vep*/ "Consequence".equals(trimmedField)) {
                             effectAnnotationPos = i;
                             if (geneIdAnnotationPos != -1) {
                                 break;
