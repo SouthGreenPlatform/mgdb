@@ -32,15 +32,19 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.bson.types.ObjectId;
 import org.springframework.context.support.GenericXmlApplicationContext;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -65,6 +69,7 @@ import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleGenotype;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.mgdb.model.mongodao.MgdbDao;
+import fr.cirad.tools.Helper;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
 import jhi.brapi.api.BrapiBaseResource;
@@ -95,10 +100,12 @@ public class BrapiImport extends AbstractGenotypeImport {
 	/** The m_process id. */
 	private String m_processID;
 	
-	private int m_ploidy = 2;
-
 	private BrapiClient client = new BrapiClient();
-	
+
+	private static final String unphasedGenotypeSeparator = "/"; 
+	private static String phasedGenotypeSeparator = "|";
+	private static String multipleGenotypeSeparatorRegex = Pattern.compile(Pattern.quote(phasedGenotypeSeparator) + "|" + Pattern.quote(unphasedGenotypeSeparator)).toString();
+		
 	/**
 	 * Instantiates a new hap map import.
 	 * @throws Exception 
@@ -218,7 +225,8 @@ public class BrapiImport extends AbstractGenotypeImport {
 			}
 
 			CallsUtils callsUtils = new CallsUtils(calls);
-			boolean fMayUseTsv = callsUtils.hasCall("allelematrix-search/status/{id}", CallsUtils.JSON, CallsUtils.GET);
+//			boolean fMayUseTsv = callsUtils.hasCall("allelematrix-search/status/{id}", CallsUtils.JSON, CallsUtils.GET);
+			boolean fMayUseTsv = callsUtils.hasCall("allelematrix-search", CallsUtils.TSV, CallsUtils.POST);
 //			fMayUseTsv=false;
 			client.setMapID(mapDbId);
 			
@@ -324,10 +332,17 @@ public class BrapiImport extends AbstractGenotypeImport {
 				
 				if (variantsToQueryGenotypesFor.size() > variantsToCreate.size())
 				{	// we already had some of them
-//					Collection<String> skippedVariants = CollectionUtils.disjunction(variantsToQueryGenotypesFor, variantsToCreate.keySet());
-//					List<Comparable> fixedSkippedVariantIdList = skippedVariants.stream().map(str -> ObjectId.isValid(str) ? new ObjectId(str) : str).collect(Collectors.toList());
-					project.getVariantTypes().addAll(mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantData.class)).distinct(VariantData.FIELDNAME_TYPE/*, new Query(Criteria.where("_id").in(fixedSkippedVariantIdList)).getQueryObject()*/));
-					/* FIXME: on big DBs querying just the ones we need leads to a query > 16 Mb */
+					try
+					{
+						Collection<String> skippedVariants = CollectionUtils.disjunction(variantsToQueryGenotypesFor, variantsToCreate.keySet());
+						List<Comparable> fixedSkippedVariantIdList = skippedVariants.stream().map(str -> ObjectId.isValid(str) ? new ObjectId(str) : str).collect(Collectors.toList());
+						project.getVariantTypes().addAll(mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantData.class)).distinct(VariantData.FIELDNAME_TYPE, new Query(Criteria.where("_id").in(fixedSkippedVariantIdList)).getQueryObject()));
+					}
+					catch (Exception e)
+					{	// on big DBs querying just the ones we need leads to a query > 16 Mb
+						LOG.warn("DB too big for efficiently finding distinct variant types", e);
+						project.getVariantTypes().addAll(mongoTemplate.getCollection(mongoTemplate.getCollectionName(VariantData.class)).distinct(VariantData.FIELDNAME_TYPE));
+					}
 				}
 				
 				markerPager.paginate(positions.getMetadata());
@@ -365,13 +380,13 @@ public class BrapiImport extends AbstractGenotypeImport {
 			List<String> markerProfileIDs = markerprofiles.stream().map(BrapiMarkerProfile::getMarkerProfileDbId).collect(Collectors.toList());
 			
 			long count = 0;			
-			int ploidy = 0;
+			int maxPloidyFound = 0;
 			LOG.debug("Importing from " + endpointUrl + " using " + (fMayUseTsv ? "TSV" : "JSON") + " format");
 
 			if (fMayUseTsv)
 			{	// first call to initiate data export on server-side
 				Pager genotypePager = new Pager();
-				Response<BrapiBaseResource<BrapiAlleleMatrix>> response = service.getAlleleMatrix_byPost(markerProfileIDs, null, CallsUtils.TSV, true, "", URLEncoder.encode("|", "UTF-8"), "/", genotypePager.getPageSize(), genotypePager.getPage()).execute();
+				Response<BrapiBaseResource<BrapiAlleleMatrix>> response = service.getAlleleMatrix_byPost(markerProfileIDs, null, CallsUtils.TSV, true, "", URLEncoder.encode(phasedGenotypeSeparator, "UTF-8"), unphasedGenotypeSeparator, genotypePager.getPageSize(), genotypePager.getPage()).execute();
 				if (!response.isSuccessful())
 					throw new Exception(new String(response.errorBody().bytes()));
 				
@@ -455,14 +470,17 @@ public class BrapiImport extends AbstractGenotypeImport {
 							throw new Exception(new String(response.errorBody().bytes()));
 		
 						for (List<String> row : br.getResult().getData())
-							if (row.get(2).length() > 0)
+//							if (row.get(2).length() > 0)
 							{
 								String genotype = row.get(2);
-								if (ploidy == 0)
-									ploidy = 1 + org.springframework.util.StringUtils.countOccurrencesOf(genotype, "/");	/* FIXME: check if other allele separators exist */
-								tempFileWriter.write(". " + profileToGermplasmMap.get(row.get(1)) + " " + row.get(0) + " " + genotype.replaceAll("/", " ") + "\n");
+								int ploidy = genotype.split(multipleGenotypeSeparatorRegex).length;
+								if (maxPloidyFound < ploidy)
+									maxPloidyFound = ploidy;
+								tempFileWriter.write(". " + profileToGermplasmMap.get(row.get(1)) + " " + row.get(0) + " " + genotype.replaceAll(multipleGenotypeSeparatorRegex, " ") + "\n");
 							}
-	
+//							else
+//								System.out.println(row);
+
 						genotypePager.paginate(br.getMetadata());
 						tempFileWriter.flush();				
 					}
@@ -472,6 +490,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 				// STDVariantImport is convenient because it always sorts data by variants
 				STDVariantImport stdVariantImport = new STDVariantImport(progress.getProcessId());
 				mongoTemplate.save(project);	// save the project so it can be re-opened by our STDVariantImport
+				stdVariantImport.setPloidy(maxPloidyFound);
 				stdVariantImport.allowDbDropIfNoGenotypingData(false);
 				stdVariantImport.tryAndMatchRandomObjectIDs(true);
 				stdVariantImport.importToMongo(sModule, sProject, sRun, sTechnology, tempFile.getAbsolutePath(), importMode);
@@ -508,6 +527,8 @@ public class BrapiImport extends AbstractGenotypeImport {
 		ProgressIndicator.registerProgressIndicator(progress);
 		
 		GenericXmlApplicationContext ctx = null;
+		File genotypeFile = new File(mainFilePath);
+		BufferedReader in = new BufferedReader(new FileReader(genotypeFile));
 		try
 		{
 			MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
@@ -518,20 +539,47 @@ public class BrapiImport extends AbstractGenotypeImport {
 				MongoTemplateManager.initialize(ctx);
 				mongoTemplate = MongoTemplateManager.get(sModule);
 				if (mongoTemplate == null)
-					throw new Exception("DATASOURCE '" + sModule + "' is not supported!");
+					throw new Exception("DATASOURCE '" + sModule + "' does not exist!");
 			}
 			
 			mongoTemplate.getDb().command(new BasicDBObject("profile", 0));	// disable profiling
-            if (importMode == 0 && project != null && project.getPloidyLevel() > 0 && project.getPloidyLevel() != m_ploidy)
-            	throw new Exception("Ploidy levels differ between existing (" + project.getPloidyLevel() + ") and provided (" + m_ploidy + ") data!");
 			
-			File genotypeFile = new File(mainFilePath);
 			
 //			progress.addStep("Checking genotype consistency");
 //			progress.moveToNextStep();
 //			HashMap<Comparable, ArrayList<String>> inconsistencies = checkSynonymGenotypeConsistency(existingVariantIDs, genotypeFile, sModule + "_" + sProject + "_" + sRun);
 			
-			BufferedReader in = new BufferedReader(new FileReader(genotypeFile));
+
+			// Find out ploidy level
+			in.readLine();	// skip header line
+			String sLine = in.readLine();
+			int nResolvedPloidy = 0;
+			long lineCount = 0;
+			do
+			{
+				if (sLine.length() > 0)
+				{
+					List<String> splittedLine = Helper.split(sLine.trim(), "\t");
+					try
+					{
+						Integer maxPloidyForVariant = splittedLine.subList(1, splittedLine.size()).stream().map(gt -> gt.split("\\||\\/").length).reduce(Integer::max).get();
+						if (maxPloidyForVariant > nResolvedPloidy)
+							nResolvedPloidy = maxPloidyForVariant;
+					}
+					catch (NoSuchElementException ignored)
+					{}
+				}
+				sLine = in.readLine();
+			}
+			while (sLine != null && lineCount++ < 1000);
+
+			if (importMode == 0 && project.getPloidyLevel() != 0 && project.getPloidyLevel() != nResolvedPloidy)
+            	throw new Exception("Ploidy levels differ between existing (" + project.getPloidyLevel() + ") and provided (" + nResolvedPloidy + ") data!");
+			project.setPloidyLevel(nResolvedPloidy);
+			LOG.info("Using max ploidy found among first 1000 variants: " + nResolvedPloidy);
+			
+			in.close();
+			in = new BufferedReader(new FileReader(genotypeFile));
 			
 //			// create project if necessary
 //			if (project == null)
@@ -543,16 +591,16 @@ public class BrapiImport extends AbstractGenotypeImport {
 //			}
 
 			// The first line is a list of marker profile IDs
-			List<String> individualList = Arrays.asList(in.readLine().split("\t"));
-			List<String> individuals = individualList.subList(1, individualList.size());
+			List<String> individuals = Arrays.asList(in.readLine().split("\t"));
+			individuals = individuals.subList(1, individuals.size());
 
 			// import genotyping data
 			progress.addStep("Processing variant lines");
 			progress.moveToNextStep();
 			progress.setPercentageEnabled(false);		
-			String sLine = in.readLine();
+			sLine = in.readLine();
 			int nVariantSaveCount = 0;
-			long lineCount = 0;
+			lineCount = 0;
 			String sVariantName = null;
 			ArrayList<String> unsavedVariants = new ArrayList<String>();
 			TreeMap<String /* individual name */, SampleId> previouslySavedSamples = new TreeMap<String, SampleId>();	// will auto-magically remove all duplicates, and sort data, cool eh?
@@ -562,8 +610,9 @@ public class BrapiImport extends AbstractGenotypeImport {
 			{
 				if (sLine.length() > 0)
 				{
-					String[] splittedLine = sLine.trim().split("\t");
-					sVariantName = splittedLine[0];
+					List<String> splittedLine = Helper.split(sLine.trim(), "\t");
+					String[] cells = splittedLine.toArray(new String[splittedLine.size()]);
+					sVariantName = cells[0];
 					Comparable mgdbVariantId = existingVariantIDs.get(sVariantName.toUpperCase());
 					if (mgdbVariantId == null)
 						LOG.warn("Unknown id: " + sVariantName);
@@ -578,8 +627,6 @@ public class BrapiImport extends AbstractGenotypeImport {
 				progress.setCurrentStepProgress((int) ++lineCount);
 			}
 			while (sLine != null);
-
-			in.close();
 
             project.getSequences().addAll(affectedSequences);
 			
@@ -600,6 +647,8 @@ public class BrapiImport extends AbstractGenotypeImport {
 		}
 		finally
 		{
+			if (in != null)
+				in.close();
 			if (ctx != null)
 				ctx.close();
 		}
@@ -623,7 +672,8 @@ public class BrapiImport extends AbstractGenotypeImport {
 			VariantRunData theRun = new VariantRunData(new VariantRunData.VariantRunDataId(project.getId(), runName, mgdbVariantId));
 			
 			ArrayList<String> inconsistentIndividuals = inconsistencies.get(mgdbVariantId);
-			String[] cells = lineForVariant.trim().split("\t");
+			String[] cells = lineForVariant.split("\t");
+				
 			for (int k=1; k<=markerProfiles.size(); k++)
 			{				
 				String sIndividualName = markerProfileToIndividualMap.get(markerProfiles.get(k - 1));
@@ -675,7 +725,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 					LOG.warn("Not adding inconsistent data: " + sVariantName + " / " + sIndividualName);
 				else
 				{					
-					boolean fAddedSomeAlleles = false;
+					boolean fNewAllelesEncountered = false;
 					ArrayList<Integer> alleleIndexList = new ArrayList<Integer>();
 					String phasedGT = null;
 					if (k < cells.length && cells[k].length() > 0/* && !"N".equals(cells[k])*/)
@@ -684,22 +734,23 @@ public class BrapiImport extends AbstractGenotypeImport {
 							phasedGT = cells[k];
 						
 			            Comparable phasedGroup = phasingGroup.get(sIndividualName);
-			            if (phasedGroup == null || (phasedGT == null/* && !genotype.isNoCall()*/))
+			            if (phasedGroup == null || (phasedGT == null))
 			                phasingGroup.put(sIndividualName, variant.getId());
 
-						String[] alleles = cells[k].split(phasedGT != null ? "\\|" : "\\/"); 	/*FIXME: deal with other separators*/
-						for (int i=0; i<alleles.length; i++)
-						{
-							int indexToUse = alleles.length > i ? i : i - 1;
-							if (!variant.getKnownAlleleList().contains(alleles[indexToUse]))
+						String[] alleles = cells[k].split(multipleGenotypeSeparatorRegex);
+						if (alleles.length != project.getPloidyLevel() && alleles.length > 1)
+							LOG.warn("Not adding genotype " + cells[k] + " because it doesn't match ploidy level (" + project.getPloidyLevel() + "): " + sVariantName + " / " + sIndividualName);
+						else
+							for (int i=0; i<project.getPloidyLevel(); i++)
 							{
-								variant.getKnownAlleleList().add(alleles[indexToUse]);	// it's the first time we encounter this alternate allele for this variant
-								fAddedSomeAlleles = true;
+								int indexToUse = alleles.length == project.getPloidyLevel() ? i : 0;	// support for collapsed homozygous genotypes
+								if (!variant.getKnownAlleleList().contains(alleles[indexToUse]))
+								{
+									variant.getKnownAlleleList().add(alleles[indexToUse]);	// it's the first time we encounter this alternate allele for this variant
+									fNewAllelesEncountered = true;
+								}
+								alleleIndexList.add(variant.getKnownAlleleList().indexOf(alleles[indexToUse]));
 							}
-							alleleIndexList.add(variant.getKnownAlleleList().indexOf(alleles[indexToUse]));
-						}
-						if (project.getPloidyLevel() == 0)
-							project.setPloidyLevel(alleles.length);
 					}
 					Collections.sort(alleleIndexList);
 					gtString = StringUtils.join(alleleIndexList, "/");
@@ -711,7 +762,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 		            	genotype.getAdditionalInfo().put(VariantData.GT_FIELD_PHASED_ID, phasingGroup.get(sIndividualName));
 		            }
 					
-					if (fAddedSomeAlleles && update != null)
+					if (fNewAllelesEncountered && update != null)
 						update.set(VariantData.FIELDNAME_KNOWN_ALLELE_LIST, variant.getKnownAlleleList());
 				}
 			}
