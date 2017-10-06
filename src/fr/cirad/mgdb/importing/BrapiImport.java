@@ -157,9 +157,10 @@ public class BrapiImport extends AbstractGenotypeImport {
 	 * @param sTechnology the technology
 	 * @param endpoint URL
 	 * @param importMode the import mode
+	 * @return a project ID if it was created by this method, otherwise null
 	 * @throws Exception the exception
 	 */
-	public void importToMongo(String sModule, String sProject, String sRun, String sTechnology, String endpointUrl, String studyDbId, String mapDbId, int importMode) throws Exception
+	public Integer importToMongo(String sModule, String sProject, String sRun, String sTechnology, String endpointUrl, String studyDbId, String mapDbId, int importMode) throws Exception
 	{
 		long before = System.currentTimeMillis();
 		final ProgressIndicator progress = ProgressIndicator.get(m_processID) != null ? ProgressIndicator.get(m_processID) : new ProgressIndicator(m_processID, new String[]{"Initializing import"});	// better to add it straight-away so the JSP doesn't get null in return when it checks for it (otherwise it will assume the process has ended)
@@ -203,12 +204,14 @@ public class BrapiImport extends AbstractGenotypeImport {
                     mongoTemplate.getDb().dropDatabase(); // if there is no genotyping data left and we are not working on a fixed list of variants then any other data is irrelevant
 			}
 
+			Integer createdProject = null;
 			// create project if necessary
 			if (project == null || importMode == 2)
 			{	// create it
 				project = new GenotypingProject(AutoIncrementCounter.getNextSequence(mongoTemplate, MongoTemplateManager.getMongoCollectionName(GenotypingProject.class)));
 				project.setName(sProject);
 				project.setTechnology(sTechnology);
+				createdProject = project.getId();
 			}
 						
 			client.initService(endpointUrl);			
@@ -421,13 +424,13 @@ public class BrapiImport extends AbstractGenotypeImport {
 					if (AsyncChecker.ASYNC_FAILED.equals(status.getMessage()))
 					{
 						progress.setError("BrAPI export failed on server-side");
-						return;
+						return null;
 					}
 					
 					if (!AsyncChecker.callFinished(status))
 					{
 						progress.setError("BrAPI export is in unknown status");
-						return;
+						return null;
 					}
 					else
 					{
@@ -440,7 +443,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 						if (existingVariantIDs.isEmpty())
 							existingVariantIDs = buildSynonymToIdMapForExistingVariants(mongoTemplate, true);	// update it
 						importTsvToMongo(sModule, project, sRun, sTechnology, tempFile.getAbsolutePath(), profileToGermplasmMap, importMode, existingVariantIDs);
-						return;	//finished
+						return createdProject;	//finished
 					}
 				}
 			}
@@ -470,17 +473,14 @@ public class BrapiImport extends AbstractGenotypeImport {
 							throw new Exception(new String(response.errorBody().bytes()));
 		
 						for (List<String> row : br.getResult().getData())
-//							if (row.get(2).length() > 0)
-							{
-								String genotype = row.get(2);
-								int ploidy = genotype.split(multipleGenotypeSeparatorRegex).length;
-								if (maxPloidyFound < ploidy)
-									maxPloidyFound = ploidy;
-								tempFileWriter.write(". " + profileToGermplasmMap.get(row.get(1)) + " " + row.get(0) + " " + genotype.replaceAll(multipleGenotypeSeparatorRegex, " ") + "\n");
-							}
-//							else
-//								System.out.println(row);
-
+						{
+							String genotype = row.get(2);
+							int ploidy = genotype.split(multipleGenotypeSeparatorRegex).length;
+							if (maxPloidyFound < ploidy)
+								maxPloidyFound = ploidy;
+							tempFileWriter.write(". " + profileToGermplasmMap.get(row.get(1)) + " " + row.get(0) + " " + genotype.replaceAll(multipleGenotypeSeparatorRegex, " ") + "\n");
+						}
+						
 						genotypePager.paginate(br.getMetadata());
 						tempFileWriter.flush();				
 					}
@@ -497,6 +497,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 			}
 
 			LOG.info("BrapiImport took " + (System.currentTimeMillis() - before) / 1000 + "s for " + count + " records");
+			return createdProject;
 		}
 		catch (SocketException se)
 		{
@@ -505,6 +506,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 				LOG.error("Error invoking BrAPI service. Try and check server-side logs", se);
 				throw new Exception("Error invoking BrAPI service", se);
 			}
+			throw se;
 		}
 		finally
 		{
@@ -672,8 +674,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 			VariantRunData theRun = new VariantRunData(new VariantRunData.VariantRunDataId(project.getId(), runName, mgdbVariantId));
 			
 			ArrayList<String> inconsistentIndividuals = inconsistencies.get(mgdbVariantId);
-			String[] cells = lineForVariant.split("\t");
-				
+			String[] cells = lineForVariant.trim().split("\t");
 			for (int k=1; k<=markerProfiles.size(); k++)
 			{				
 				String sIndividualName = markerProfileToIndividualMap.get(markerProfiles.get(k - 1));
