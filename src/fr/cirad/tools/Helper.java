@@ -253,25 +253,6 @@ public class Helper {
     }
 
     /**
-     * retrieve info from an ID
-     *
-     * @param id of the GA4GH object to parse
-     * @param expectedParam number of param that has to be found
-     * @return string[] containing Module, Project, VariantSetName | CallSetName
-     * , VariantName Or null if the module doesn't exist
-     */
-    public static String[] getInfoFromId(String id, int expectedParam) {
-
-        String delimitor = "[|]";
-        String[] result = id.split(delimitor);
-        if (result.length == expectedParam) {
-            return result;
-        } else {
-            return null;
-        }
-    }
-
-    /**
      * Null to empty string.
      *
      * @param s the s
