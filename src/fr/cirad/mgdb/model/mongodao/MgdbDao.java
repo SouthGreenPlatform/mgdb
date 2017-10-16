@@ -245,7 +245,7 @@ public class MgdbDao
 	 * Gets the sample genotypes.
 	 *
 	 * @param mongoTemplate the mongo template
-	 * @param sampleIDs the sample i ds
+	 * @param sampleIDs the sample IDs
 	 * @param variantIdListToRestrictTo the variant id list to restrict to
 	 * @param fReturnVariantTypes whether or not to return variant types
 	 * @param sort the sort

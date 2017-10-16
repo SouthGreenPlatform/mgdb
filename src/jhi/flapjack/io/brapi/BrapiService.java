@@ -50,11 +50,11 @@ public interface BrapiService
 //	Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrixById(@Field(value="matrixDbId") String matrixDbId, @Field("format") String format, @Field("expandHomozygotes") Boolean expandHomozygotes, @Field("unknownString") String unknownString, @Field("sepPhased") String sepPhased, @Field("sepUnphased") String sepUnphased, @Field("pageSize") Integer pageSize, @Field(value="page") Integer page);
 	
 	@GET("allelematrix-search")
-	Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix(@Query("markerprofileDbId") List<String> markerProfileDbIds, @Query("markerDbId") List<String> markerDbIds, @Query("format") String format, @Query("expandHomozygotes") Boolean expandHomozygotes, @Query("unknownString") String unknownString, @Query("sepPhased") String sepPhased, @Query("sepUnphased") String sepUnphased, @Query("pageSize") String pageSize, @Query("page") String page);
+	Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix(@Query("markerprofileDbId") List<String> markerprofileDbIds, @Query("markerDbId") List<String> markerDbIds, @Query("format") String format, @Query("expandHomozygotes") Boolean expandHomozygotes, @Query("unknownString") String unknownString, @Query("sepPhased") String sepPhased, @Query("sepUnphased") String sepUnphased, @Query("pageSize") String pageSize, @Query("page") String page);
 
 	@FormUrlEncoded
 	@POST("allelematrix-search")
-	Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix_byPost(@Field("markerprofileDbId") List<String> markerProfileDbIds, 	@Field("markerDbId") List<String> markerDbIds,	@Field("format") String format, @Field("expandHomozygotes") Boolean expandHomozygotes, @Field("unknownString") String unknownString, @Field("sepPhased") String sepPhased, @Field("sepUnphased") String sepUnphased, @Field("pageSize") String pageSize, @Field("page") String page);
+	Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix_byPost(@Field("markerprofileDbId") List<String> markerprofileDbIds, @Field("markerDbId") List<String> markerDbIds, @Field("format") String format, @Field("expandHomozygotes") Boolean expandHomozygotes, @Field("unknownString") String unknownString, @Field("sepPhased") String sepPhased, @Field("sepUnphased") String sepUnphased, @Field("pageSize") String pageSize, @Field("page") String page);
 	
 	@GET("allelematrix-search/status/{id}")
 	Call<BrapiBaseResource<Object>> getAlleleMatrixStatus(@Path("id") String extractId);
