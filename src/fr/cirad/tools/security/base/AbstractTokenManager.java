@@ -22,9 +22,13 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.text.ParseException;
 
+import javax.servlet.http.HttpServletRequest;
+
 import org.apache.log4j.Logger;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+
+import javassist.tools.rmi.ObjectNotFoundException;
 
 @Component
 public abstract class AbstractTokenManager {
@@ -44,12 +48,20 @@ public abstract class AbstractTokenManager {
     abstract public boolean canUserReadProject(String token, String module, Comparable projectId);
     abstract public boolean canUserReadProject(Authentication authentication, String module, Comparable projectId);
     
-    abstract public boolean canUserReadDB(String token, String module);    
-    abstract public boolean canUserReadDB(Authentication authentication, String module);
+    abstract public boolean canUserReadDB(String token, String module) throws ObjectNotFoundException;    
+    abstract public boolean canUserReadDB(Authentication authentication, String module) throws ObjectNotFoundException;
 
 	abstract public void cleanupTokenMap() throws ParseException;
 	
     abstract public int getSessionTimeoutInSeconds();
 
     abstract public void setSessionTimeoutInSeconds(int sessionTimeoutInSeconds);
+    
+    public String readToken(HttpServletRequest request)
+    {
+        String token = request.getHeader("Authorization");
+		if (token != null && token.startsWith("Bearer "))
+			token = token.substring(7);
+		return token;
+    }
 }
