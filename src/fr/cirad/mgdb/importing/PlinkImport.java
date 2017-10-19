@@ -305,7 +305,15 @@ public class PlinkImport extends AbstractGenotypeImport {
 
 					String[] seqAndPos = variantsAndPositions.get(providedVariantId).split("\t");
 					String sequence = seqAndPos[0];
-					Long bpPosition = Long.parseLong(seqAndPos[1]);
+					Long bpPosition = 0l;
+					try
+					{
+						bpPosition = Long.parseLong(seqAndPos[1]);
+					}
+					catch (NumberFormatException nfe)
+					{
+						LOG.warn("Unable to read position for variant " + providedVariantId, nfe);
+					}
 					if ("0".equals(sequence) || 0 == bpPosition)
 					{
 						sequence = null;
