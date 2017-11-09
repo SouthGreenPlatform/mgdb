@@ -505,7 +505,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
                     if (genotypingProject.getPloidyLevel() == 1)
                         condList.add(2);
                     else
-                    	condList.add(new BasicDBObject("$add", new Object[] {1, new BasicDBObject("$cmp",  new Object[] {fGotIndividualsWithMultipleSamples ? ("$$u" + j) : (possiblyConstrainedPathToGT), fGotIndividualsWithMultipleSamples ? new Object[] {"0/1"} : "0/1"})}));
+                    	condList.add(new BasicDBObject("$subtract", new Object[] {2, new BasicDBObject("$cmp",  new Object[] {fGotIndividualsWithMultipleSamples ? new Object[] {"1/1"} : "1/1", fGotIndividualsWithMultipleSamples ? ("$$u" + j) : (possiblyConstrainedPathToGT)})}));
                     altAlleleCountList.add(new BasicDBObject("$cond", condList));
                 }
 
