@@ -83,6 +83,7 @@ public class ProgressIndicator
 	{
 		m_processId = sProcessId;
 		m_stepLabels.addAll(Arrays.asList(stepLabels));
+		LOG.debug("ProgressIndicator " + hashCode() + " created for process " + sProcessId);
 	}
 	
 	/**
@@ -283,10 +284,11 @@ public class ProgressIndicator
 		ProgressIndicator progress = progressIndicators.get(sProcessID);
 		if (progress != null && progress.isComplete())
 		{
-			LOG.debug("removing ProgressIndicator for process " + sProcessID);
+			LOG.debug("removing ProgressIndicator " + progress.hashCode() + " for process " + sProcessID);
 			progressIndicators.remove(sProcessID);	// we don't want to keep them forever
 		}
 
+//		LOG.debug("returning " + (progress == null ? progress : (progress.hashCode()  + ": " + progress.getProgressDescription())) + " for process " + sProcessID);
 		return progress;
 	}
 	
