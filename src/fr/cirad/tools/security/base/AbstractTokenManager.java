@@ -22,13 +22,12 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.text.ParseException;
 
+import javax.ejb.ObjectNotFoundException;
 import javax.servlet.http.HttpServletRequest;
 
 import org.apache.log4j.Logger;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-
-import javassist.tools.rmi.ObjectNotFoundException;
 
 @Component
 public abstract class AbstractTokenManager {
@@ -59,9 +58,15 @@ public abstract class AbstractTokenManager {
     
     public String readToken(HttpServletRequest request)
     {
-        String token = request.getHeader("Authorization");
-		if (token != null && token.startsWith("Bearer "))
-			token = token.substring(7);
-		return token;
+    	String token = null;
+    	if (request != null)
+    	{
+	        token = request.getHeader("Authorization");
+			if (token != null && token.startsWith("Bearer "))
+				token = token.substring(7);
+			else
+				token = request.getParameter("token");
+    	}
+		return token == null ? "" : token;
     }
 }
