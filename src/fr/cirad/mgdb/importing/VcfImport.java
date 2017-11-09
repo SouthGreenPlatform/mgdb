@@ -461,16 +461,14 @@ public class VcfImport extends AbstractGenotypeImport {
                 for (String effect : effectList) {
                     for (String effectDesc : effect.split(",")) {
                         String sEffect = null;
-                        int parenthesisPos = effectDesc.indexOf("(");
+                        int parenthesisPos = "ANN".equals(key) ? -1 /* parenthesis can also be used in ANN, bud differently */ : effectDesc.indexOf("(");
                         List<String> fields = Helper.split(effectDesc.substring(parenthesisPos + 1).replaceAll("\\)", ""), "|");
-                        if (parenthesisPos > 0) {
+                        if (parenthesisPos > 0)
                             sEffect = effectDesc.substring(0, parenthesisPos);	// snpEff version < 4.1
-                        } else if (effectAnnotationPos != -1) {
+                        else if (effectAnnotationPos != -1)
                             sEffect = fields.get(effectAnnotationPos);
-                        }
-                        if (sEffect != null) {
+                        if (sEffect != null)
                             aiEffect.add(sEffect);
-                        }
                         aiGene.add(fields.get(geneIdAnnotationPos));
                     }
                 }
