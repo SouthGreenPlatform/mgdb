@@ -23,6 +23,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>fr.cirad</groupId>
+            <artifactId>ControllerServiceDAOInterface</artifactId>
+            <version>1.0-RELEASE</version>           
+        </dependency>
+
+        <dependency>
 		    <groupId>com.squareup.okhttp3</groupId>
 		    <artifactId>okhttp</artifactId>
 		    <version>3.3.1</version>
