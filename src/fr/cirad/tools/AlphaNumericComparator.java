@@ -22,14 +22,14 @@ import java.util.Comparator;
 /**
  * The Class AlphaNumericStringComparator.
  */
-public class AlphaNumericStringComparator implements Comparator<String> {
+public class AlphaNumericComparator<T> implements Comparator<T> {
 
     /* (non-Javadoc)
      * @see java.util.Comparator#compare(java.lang.Object, java.lang.Object)
      */
-    public int compare(String a, String b) {
-        char[] aChars = a.toCharArray();
-        char[] bChars = b.toCharArray();
+    public int compare(T a, T b) {
+        char[] aChars = a.toString().toCharArray();
+        char[] bChars = b.toString().toCharArray();
         int aIndex = 0;
         int bIndex = 0;
         while (true) {
