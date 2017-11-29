@@ -432,9 +432,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
     				cleanOperator[g] = cleanOperator[g].substring(0, cleanOperator[g].length() - AGGREGATION_QUERY_WITHOUT_ABNORMAL_HETEROZYGOSITY.length());
     			}
     		}
-    		
-//    		boolean fMostSameSelected = "$eq".equals(cleanOperator[g]) && !fNegateMatch[g];
-    		
+
 	        int nMaxNumberOfAllelesForOneVariant = maxAlleleCount > 0 ? maxAlleleCount : genotypingProject.getAlleleCounts().last(), nPloidy = genotypingProject.getPloidyLevel();
 	        int nNumberOfPossibleGenotypes = (int) (nMaxNumberOfAllelesForOneVariant + MathUtils.factorial(nMaxNumberOfAllelesForOneVariant)/(MathUtils.factorial(nPloidy)*MathUtils.factorial(nMaxNumberOfAllelesForOneVariant-nPloidy)) + (missingData[g] != null && missingData[g] >= 100/selectedIndividuals[g].size() ? 1 : 0));
     		if ("$ne".equals(cleanOperator[g]) && !fNegateMatch[g])
@@ -455,18 +453,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 							fGotIndividualsWithMultipleSamples = true;
 							break;
 						}
-			
-//			fCompareBetweenGenotypes[g] = cleanOperator[g] != null && !fZygosityRegex[g] && !fIsWithoutAbnormalHeterozygosityQuery[g] && !fMostSameSelected;	// all same is not a real all same since we now support a percentage
-//			if (fCompareBetweenGenotypes[g] && "$ne".equals(cleanOperator[g]) && fNegateMatch[g])
-//	        {
-//		        if (selectedIndividuals[g].size() > nNumberOfPossibleGenotypes)
-//		        {
-//		        	fCompareBetweenGenotypes[g] = false;	// we know applying this filter would not affect the query
-//		        	if (nNextCallCount == 1)
-//			        	LOG.warn("Ignoring 'not all different' filter on group 1 (more individuals than possible genotypes)");
-//		        }
-//	        }
-			
+						
 			fCompareBetweenGenotypes[g] = cleanOperator[g] != null && !fZygosityRegex[g] && !fIsWithoutAbnormalHeterozygosityQuery[g];
 	        if ("$ne".equals(cleanOperator[g]) && fNegateMatch[g])
 	        {
@@ -770,7 +757,10 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 		                subIn.put("c" + g, new BasicDBObject("$concatArrays", concatArrayListForMostSame));
 		                
 		                addFieldsVars.put("dgc" + g, new BasicDBObject("$max", "$r.c" + g));	// dominant genotype count
-		                addFieldsIn.put("ed" + g, new BasicDBObject("$gte", Arrays.asList("$$dgc" + g, new BasicDBObject("$subtract", Arrays.asList(mostSameRatio[g] * selectedIndividuals[g].size() / 100f, "$r.m" + g)))));	// flag telling whether or not we have enough dominant genotypes to reach the required ratio
+		                Object minimumDominantGenotypeCount = mostSameRatio[g] * selectedIndividuals[g].size() / 100f;
+		                if (fMissingDataApplied[g])	// we may need to decrease that by the number of allowed missing genotypes
+		                	minimumDominantGenotypeCount = new BasicDBObject("$subtract", Arrays.asList(minimumDominantGenotypeCount, "$r.m" + g));
+		                addFieldsIn.put("ed" + g, new BasicDBObject("$gte", Arrays.asList("$$dgc" + g, minimumDominantGenotypeCount)));	// flag telling whether or not we have enough dominant genotypes to reach the required ratio
 		                if (fDiscriminate && g == 1)
 		                {
 		                	BasicDBObject dominantGt0 = new BasicDBObject("$arrayElemAt", Arrays.asList("$r.d" + 0, new BasicDBObject("$indexOfArray", Arrays.asList("$r.c" + 0, "$$dgc" + 0))));
@@ -815,11 +805,11 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 
         pipeline.add(new BasicDBObject("$project", new BasicDBObject("_id", "$_id" + (!fGotIndividualsWithMultipleSamples ? "." + VariantRunDataId.FIELDNAME_VARIANT_ID : ""))));
 
-//        if (nNextCallCount == 1)
-//        {
-//        	try { System.out.println(new ObjectMapper().defaultPrettyPrintingWriter().writeValueAsString(pipeline.subList(1, pipeline.size()))); }
-//        	catch (Exception ignored) {}
-//        }
+        if (nNextCallCount == 1)
+        {
+        	try { System.out.println(new ObjectMapper().defaultPrettyPrintingWriter().writeValueAsString(pipeline.subList(1, pipeline.size()))); }
+        	catch (Exception ignored) {}
+        }
         return pipeline;
     }
 		
