@@ -19,6 +19,7 @@ package fr.cirad.mgdb.model.mongo.maintypes;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
@@ -564,16 +565,18 @@ public class VariantData
 	 *
 	 * @param runs the runs
 	 * @param exportVariantIDs the export variant i ds
-	 * @param sampleIDToIndividualIdMap the sample id to individual id map
+	 * @param sampleIDToIndividualIdMap global sample ID to individual ID map
+	 * @param individuals1 individual IDs for group 1
+	 * @param individuals2 individual IDs for group 2
 	 * @param previousPhasingIds the previous phasing ids
-	 * @param nMinimumGenotypeQuality the n minimum genotype quality
-	 * @param nMinimumReadDepth the n minimum read depth
+	 * @param annotationFieldThresholds1 the annotation field thresholds for group 1
+	 * @param annotationFieldThresholds2 the annotation field thresholds for group 2
 	 * @param warningFileWriter the warning file writer
 	 * @param synonym the synonym
 	 * @return the variant context
 	 * @throws Exception the exception
 	 */
-	public VariantContext toVariantContext(Collection<VariantRunData> runs, boolean exportVariantIDs, LinkedHashMap<SampleId, String> sampleIDToIndividualIdMap, HashMap<SampleId, Comparable> previousPhasingIds, int nMinimumGenotypeQuality, int nMinimumReadDepth, FileWriter warningFileWriter, Comparable synonym) throws Exception
+	public VariantContext toVariantContext(Collection<VariantRunData> runs, boolean exportVariantIDs, Map<SampleId, String> sampleIDToIndividualIdMap, Collection<String> individuals1, Collection<String> individuals2, HashMap<SampleId, Comparable> previousPhasingIds, HashMap<String, Integer> annotationFieldThresholds1, HashMap<String, Integer> annotationFieldThresholds2, FileWriter warningFileWriter, Comparable synonym) throws Exception
 	{
 		ArrayList<Genotype> genotypes = new ArrayList<Genotype>();
 		String sRefAllele = knownAlleleList.size() == 0 ? "" : knownAlleleList.get(0);
@@ -624,9 +627,9 @@ public class VariantData
 			}
 		}
 			
-		individualLoop : for (String individualId : individualList)
+		individualLoop : for (String individualName : individualList)
 		{
-			HashMap<String, List<SampleId>> samplesWithGivenGenotype = individualSamplesByGenotype.get(individualId);
+			HashMap<String, List<SampleId>> samplesWithGivenGenotype = individualSamplesByGenotype.get(individualName);
 			HashMap<Object, Integer> genotypeCounts = new HashMap<Object, Integer>(); // will help us to keep track of missing genotypes
 				
 			int highestGenotypeCount = 0;
@@ -649,7 +652,7 @@ public class VariantData
 				continue;	// no genotype for this individual
 			
 			if (warningFileWriter != null && genotypeCounts.size() > 1)
-				warningFileWriter.write("- Dissimilar genotypes found for variant " + (synonym == null ? getId() : synonym) + ", individual " + individualId + ". Exporting most frequent: " + mostFrequentGenotype + "\n");
+				warningFileWriter.write("- Dissimilar genotypes found for variant " + (synonym == null ? getId() : synonym) + ", individual " + individualName + ". Exporting most frequent: " + mostFrequentGenotype + "\n");
 			
 			SampleId spId = samplesWithGivenGenotype.get(mostFrequentGenotype).get(0);	// any will do
 			SampleGenotype sampleGenotype = sampleGenotypes.get(spId);
@@ -679,37 +682,21 @@ public class VariantData
 				individualAlleles.add(allele);
 			}
 
-			GenotypeBuilder gb = new GenotypeBuilder(individualId, individualAlleles);
+			GenotypeBuilder gb = new GenotypeBuilder(individualName, individualAlleles);
 			if (individualAlleles.size() > 0)
 			{
 				gb.phased(isPhased);
 				String genotypeFilters = (String) sampleGenotype.getAdditionalInfo().get(FIELD_FILTERS);
 				if (genotypeFilters != null && genotypeFilters.length() > 0)
 					gb.filter(genotypeFilters);
-				
+								
 				List<String> alleleListAtImportTimeIfDifferentFromNow = null;
 				for (String key : sampleGenotype.getAdditionalInfo().keySet())
-					if (GT_FIELD_GQ.equals(key))
-					{
-						Integer gq = (Integer) sampleGenotype.getAdditionalInfo().get(key);
-						if (gq != null && gq < nMinimumGenotypeQuality)
-							continue individualLoop;
-						if (gq != null)
-							gb.GQ(gq.intValue());
-						else
-							gb.noGQ();
-					}
-					else if (GT_FIELD_DP.equals(key))
-					{
-						Integer dp = (Integer) sampleGenotype.getAdditionalInfo().get(key);
-						if (dp != null && dp < nMinimumReadDepth)
-							continue individualLoop;
-						if (dp != null)
-							gb.DP(dp.intValue());
-						else
-							gb.noDP();
-					}
-					else if (GT_FIELD_AD.equals(key))
+				{
+					if (!gtPassesVcfAnnotationFilters(individualName, sampleGenotype, individuals1, annotationFieldThresholds1, individuals2, annotationFieldThresholds2))
+						continue individualLoop;	// skip genotype
+
+					if (VCFConstants.GENOTYPE_ALLELE_DEPTHS.equals(key))
 					{
 						String ad = (String) sampleGenotype.getAdditionalInfo().get(key);
 						if (ad != null)
@@ -725,12 +712,12 @@ public class VariantData
 						else
 							gb.noAD();
 					}
-					else if (GT_FIELD_PL.equals(key))
+					else if (VCFConstants.GENOTYPE_PL_KEY.equals(key) || VCFConstants.GENOTYPE_LIKELIHOODS_KEY.equals(key))
 					{
-						String pl = (String) sampleGenotype.getAdditionalInfo().get(key);
-						if (pl != null)
+						String fieldVal = (String) sampleGenotype.getAdditionalInfo().get(key);
+						if (fieldVal != null)
 						{
-							int[] plArray = Helper.csvToIntArray(pl);
+							int[] plArray = VCFConstants.GENOTYPE_PL_KEY.equals(key) ? Helper.csvToIntArray(fieldVal) : GenotypeLikelihoods.fromGLField(fieldVal).getAsPLs();
 							if (alleleListAtImportTimeIfDifferentFromNow != null)
 								plArray = VariantData.fixPlFieldValue(plArray, individualAlleles.size(), alleleListAtImportTimeIfDifferentFromNow, knownAlleleList);
 							gb.PL(plArray);
@@ -740,6 +727,7 @@ public class VariantData
 					}
 					else if (!key.equals(VariantData.GT_FIELD_PHASED_GT) && !key.equals(VariantData.GT_FIELD_PHASED_ID) && !key.equals(VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_GENE) && !key.equals(VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME)) // exclude some internally created fields that we don't want to export
 						gb.attribute(key, sampleGenotype.getAdditionalInfo().get(key)); // looks like we have an extended attribute
+				}					
 			}
 			genotypes.add(gb.make());
 		}
@@ -778,7 +766,32 @@ public class VariantData
 		return vc;
 	}
 	
-    @Override
+	// tells whether applied filters imply to treat this genotype as missing data
+    public static boolean gtPassesVcfAnnotationFilters(String individualName, SampleGenotype sampleGenotype, Collection<String> individuals1, HashMap<String, Integer> annotationFieldThresholds, Collection<String> individuals2, HashMap<String, Integer> annotationFieldThresholds2)
+    {
+		List<HashMap<String, Integer>> thresholdsToCheck = new ArrayList<HashMap<String, Integer>>();
+		if (individuals1.contains(individualName))
+			thresholdsToCheck.add(annotationFieldThresholds);
+		if (individuals2.contains(individualName))
+			thresholdsToCheck.add(annotationFieldThresholds2);
+		
+		for (HashMap<String, Integer> someThresholdsToCheck : thresholdsToCheck)
+			for (String annotationField : someThresholdsToCheck.keySet())
+			{
+				Integer annotationValue = null;
+				try
+				{
+					annotationValue = (Integer) sampleGenotype.getAdditionalInfo().get(annotationField);
+				}
+				catch (Exception ignored)
+				{}
+				if (annotationValue != null && annotationValue < someThresholdsToCheck.get(annotationField))
+					return false;
+			}
+		return true;
+	}
+
+	@Override
 	public boolean equals(Object o)
 	{
 		if (this == o)

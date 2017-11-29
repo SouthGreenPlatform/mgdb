@@ -33,7 +33,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import fr.cirad.mgdb.model.mongo.subtypes.GenotypingSample;
-import fr.cirad.tools.AlphaNumericStringComparator;
+import fr.cirad.tools.AlphaNumericComparator;
 
 import java.util.Map;
 
@@ -201,7 +201,7 @@ public class GenotypingProject {
      * The sequences.
      */
     @Field(FIELDNAME_SEQUENCES)
-    private TreeSet<String> sequences = new TreeSet<String>(new AlphaNumericStringComparator());
+    private TreeSet<String> sequences = new TreeSet<String>(new AlphaNumericComparator());
 
     /**
      * The allele counts.

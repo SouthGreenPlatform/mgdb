@@ -33,13 +33,15 @@ import org.springframework.data.mongodb.core.query.Query;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 
+import fr.cirad.mgdb.model.mongo.maintypes.GenotypingProject;
 import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData.VariantRunDataId;
+import fr.cirad.mgdb.model.mongo.subtypes.GenotypingSample;
 import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
-import fr.cirad.tools.Helper;
+import fr.cirad.tools.mongo.MongoTemplateManager;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -252,7 +254,7 @@ public class MgdbDao
 	 * @return the sample genotypes
 	 * @throws Exception the exception
 	 */
-	public static LinkedHashMap<VariantData, Collection<VariantRunData>> getSampleGenotypes(MongoTemplate mongoTemplate, List<SampleId> sampleIDs, List<? extends Comparable> variantIdListToRestrictTo, boolean fReturnVariantTypes, Sort sort) throws Exception
+	public static LinkedHashMap<VariantData, Collection<VariantRunData>> getSampleGenotypes(MongoTemplate mongoTemplate, Collection<SampleId> sampleIDs, List<? extends Comparable> variantIdListToRestrictTo, boolean fReturnVariantTypes, Sort sort) throws Exception
 	{
 		ArrayList<String> variantFieldsToReturn = new ArrayList<String>();
 		variantFieldsToReturn.add(VariantData.FIELDNAME_KNOWN_ALLELE_LIST);
@@ -278,4 +280,19 @@ public class MgdbDao
 		
 		return result;
 	}
+	
+    public static List<String> getIndividualsInDbOrder(String sModule, int projId) {
+        MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
+        Query q = new Query();
+        q.fields().include(GenotypingProject.FIELDNAME_SAMPLES);
+       	q.addCriteria(Criteria.where("_id").is(projId));
+        GenotypingProject proj = mongoTemplate.findOne(q, GenotypingProject.class);
+        List<String> result = new ArrayList<>();
+        for (GenotypingSample gs : proj.getSamples().values()) {
+            if (!result.contains(gs.getIndividual())) {
+                result.add(gs.getIndividual());
+            }
+        }
+        return result;
+    }
 }

@@ -30,9 +30,8 @@ import org.springframework.data.mongodb.core.mapping.Field;
  */
 @Document(collection = "individuals")
 @TypeAlias("I")
-public class Individual
+public class Individual implements Comparable<Individual>
 {	
-	
 	/** The Constant FIELDNAME_POPULATION. */
 	public final static String FIELDNAME_POPULATION = "po";
 	
@@ -171,5 +170,16 @@ public class Individual
 			return false;
 		
 		return getId().equals(((Individual)o).getId());
+	}
+	
+	@Override
+	public int compareTo(Individual other)
+	{
+		return getId().compareToIgnoreCase(other.getId());
+	}
+	
+	@Override
+	public String toString() {
+		return id;
 	}
 }

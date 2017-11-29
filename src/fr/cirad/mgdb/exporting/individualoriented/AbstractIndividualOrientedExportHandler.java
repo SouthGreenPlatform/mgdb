@@ -193,7 +193,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 							List<String> alleles = variants[i].getAllelesFromGenotypeCode(sampleGenotype.getCode());
 							String individualName = individuals.get(sampleIDs.indexOf(new SampleId(run.getId().getProjectId(), sampleIndex))).getId();
 							
-							if (!VariantData.gtPassesAnnotationFilters(individualName, sampleGenotype, individuals1, annotationFieldThresholds, individuals2, annotationFieldThresholds2))
+							if (!VariantData.gtPassesVcfAnnotationFilters(individualName, sampleGenotype, individuals1, annotationFieldThresholds, individuals2, annotationFieldThresholds2))
 								continue;	// skip genotype
 	
 							List<String> storedIndividualGenotypes = individualGenotypes.get(individualName);
