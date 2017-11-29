@@ -27,6 +27,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContext.Type;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 
@@ -310,7 +311,7 @@ public class VcfImport extends AbstractGenotypeImport {
                     if (variant == null)
                     	variant = new VariantData(vcfEntry.hasID() ? vcfEntry.getID() : (fAtLeastOneIDProvided ? "_" + new ObjectId().toString() /* avoid mixing ID types */ : new ObjectId()));
                     unsavedVariants.add(variant);
-                    VariantRunData runToSave = addVcfDataToVariant(mongoTemplate, variant, vcfEntry, project, sRun, phasingGroups, previouslyCreatedSamples, effectAnnotationPos, geneIdAnnotationPos);
+                    VariantRunData runToSave = addVcfDataToVariant(mongoTemplate, header, variant, vcfEntry, project, sRun, phasingGroups, previouslyCreatedSamples, effectAnnotationPos, geneIdAnnotationPos);
                     if (!unsavedRuns.contains(runToSave)) {
                         unsavedRuns.add(runToSave);
                     }
@@ -400,6 +401,7 @@ public class VcfImport extends AbstractGenotypeImport {
      * Adds the vcf data to variant.
      *
      * @param mongoTemplate the mongo template
+     * @param header the VCF Header
      * @param variantToFeed the variant to feed
      * @param vc the VariantContext
      * @param project the project
@@ -411,7 +413,7 @@ public class VcfImport extends AbstractGenotypeImport {
      * @return the variant run data
      * @throws Exception the exception
      */
-    static private VariantRunData addVcfDataToVariant(MongoTemplate mongoTemplate, VariantData variantToFeed, VariantContext vc, GenotypingProject project, String runName, HashMap<String /*individual*/, Comparable> phasingGroup, Map<String /*individual*/, SampleId> usedSamples, int effectAnnotationPos, int geneIdAnnotationPos) throws Exception
+    static private VariantRunData addVcfDataToVariant(MongoTemplate mongoTemplate, VCFHeader header, VariantData variantToFeed, VariantContext vc, GenotypingProject project, String runName, HashMap<String /*individual*/, Comparable> phasingGroup, Map<String /*individual*/, SampleId> usedSamples, int effectAnnotationPos, int geneIdAnnotationPos) throws Exception
     {
         // mandatory fields
         if (variantToFeed.getType() == null) {
@@ -583,7 +585,10 @@ public class VcfImport extends AbstractGenotypeImport {
             }
             Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
             for (String sAttrName : extendedAttributes.keySet()) {
-                aGT.getAdditionalInfo().put(sAttrName, extendedAttributes.get(sAttrName).toString());
+            	VCFFormatHeaderLine formatHeaderLine = header.getFormatHeaderLine(sAttrName);
+            	boolean fConvertToInteger = formatHeaderLine.isFixedCount() && formatHeaderLine.getCount() == 1;
+            	String value = extendedAttributes.get(sAttrName).toString();
+                aGT.getAdditionalInfo().put(sAttrName, fConvertToInteger ? Integer.parseInt(value) : value);
             }
 
             if (genotype.isFiltered()) {
