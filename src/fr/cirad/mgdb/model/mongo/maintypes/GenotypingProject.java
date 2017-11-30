@@ -19,6 +19,7 @@
 package fr.cirad.mgdb.model.mongo.maintypes;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -33,6 +34,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import fr.cirad.mgdb.model.mongo.subtypes.GenotypingSample;
+import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.tools.AlphaNumericComparator;
 
 import java.util.Map;
@@ -513,30 +515,20 @@ public class GenotypingProject {
     }
 
     /**
-     * get individuals sample index from a list of Individuals
+     * get sample IDs for a collection of Individuals
      *
      * could be optimized
      *
-     * @param listInd
+     * @param individuals
      * @return
      */
-    public Map<Integer, String> getIndividualIndexFromList(String[] listInd) {
+    public Map<SampleId, String> getSampleIdToIndividualMap(Collection<String> individuals) {
 
-        Map<Integer, String> result = new HashMap<>();
-        // if list is empty, return all individuals 
-        if (listInd.length == 0) {
-            for (Integer index : getSamples().keySet()) {
-                result.put(index, getSamples().get(index).getIndividual());
-            }
-        } else {
-            for (Integer index : getSamples().keySet()) {
-                String sp = getSamples().get(index).getIndividual();
-                for (String ind : listInd) {
-                    if (sp.equalsIgnoreCase(ind)) {
-                        result.put(index, sp);
-                    }
-                }
-            }
+        Map<SampleId, String> result = new HashMap<>();
+        for (Integer index : getSamples().keySet()) {
+            String individual = getSamples().get(index).getIndividual();
+            if (individuals.size() == 0 || individuals.contains(individual))	// if list is empty, return all individuals
+            	result.put(new SampleId(getId(), index), individual);
         }
         return result;
     }

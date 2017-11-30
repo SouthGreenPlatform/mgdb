@@ -86,33 +86,6 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 	abstract public void exportData(OutputStream outputStream, String sModule, Collection<File> individualExportFiles, boolean fDeleteSampleExportFilesOnExit, ProgressIndicator progress, DBCursor markerCursor, Map<Comparable, Comparable> markerSynonyms, Map<String, InputStream> readyToExportFiles) throws Exception;
 
 	/**
-	 * Gets the individuals from samples.
-	 *
-	 * @param sModule the module
-	 * @param sampleIDs the sample ids
-	 * @return the individuals from samples
-	 */
-	protected List<Individual> getIndividualsFromSamples(final String sModule, final List<SampleId> sampleIDs)
-	{
-		MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
-		HashMap<Integer, GenotypingProject> loadedProjects = new HashMap<Integer, GenotypingProject>();
-		ArrayList<Individual> result = new ArrayList<Individual>();
-		for (SampleId spId : sampleIDs)
-		{
-			GenotypingProject project = loadedProjects.get(spId.getProject());
-			if (project == null)
-			{
-				project = mongoTemplate.findById(spId.getProject(), GenotypingProject.class);
-				loadedProjects.put(spId.getProject(), project);
-			}
-			Integer spIndex = spId.getSampleIndex();
-			String individual = project.getSamples().get(spIndex).getIndividual();
-			result.add(mongoTemplate.findById(individual, Individual.class));
-		}
-		return result;
-	}
-
-	/**
 	 * Creates the export files.
 	 *
 	 * @param sModule the module
@@ -122,33 +95,31 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 	 * @param exportID the export id
 	 * @param annotationFieldThresholds the annotation field thresholds for group 1
 	 * @param annotationFieldThresholds2 the annotation field thresholds for group 2
+	 * @param sampleIndexToIndividualMapToExport 
 	 * @param progress the progress
-	 * @return the linked hash map
+	 * @return a map providing one File per individual
 	 * @throws Exception the exception
 	 */
-	public TreeMap<String, File> createExportFiles(String sModule, DBCursor markerCursor, List<SampleId> sampleIDs1, List<SampleId> sampleIDs2, String exportID, HashMap<String, Integer> annotationFieldThresholds, HashMap<String, Integer> annotationFieldThresholds2, final ProgressIndicator progress) throws Exception
+	public TreeMap<String, File> createExportFiles(String sModule, DBCursor markerCursor, List<SampleId> sampleIDs1, List<SampleId> sampleIDs2, String exportID, HashMap<String, Integer> annotationFieldThresholds, HashMap<String, Integer> annotationFieldThresholds2, Map<SampleId, String> sampleIndexToIndividualMapToExport, final ProgressIndicator progress) throws Exception
 	{
 		long before = System.currentTimeMillis();
 
-		List<String> individuals1 = getIndividualsFromSamples(sModule, sampleIDs1).stream().map(ind -> ind.getId()).collect(Collectors.toList());	
-		List<String> individuals2 = getIndividualsFromSamples(sModule, sampleIDs2).stream().map(ind -> ind.getId()).collect(Collectors.toList());
-
-		ArrayList<SampleId> sampleIDs = (ArrayList<SampleId>) CollectionUtils.union(sampleIDs1, sampleIDs2);
-		List<Individual> individuals = getIndividualsFromSamples(sModule, sampleIDs);
+		List<String> individuals1 = MgdbDao.getIndividualsFromSamples(sModule, sampleIDs1).stream().map(ind -> ind.getId()).collect(Collectors.toList());	
+		List<String> individuals2 = MgdbDao.getIndividualsFromSamples(sModule, sampleIDs2).stream().map(ind -> ind.getId()).collect(Collectors.toList());
 
 		HashMap<Object, Integer> individualOutputGenotypeCounts = new HashMap<Object, Integer>();	// will help us to keep track of missing genotypes
 		TreeMap<String, File> files = new TreeMap<String, File>(new AlphaNumericComparator<String>());
 		int i = 0;
-		for (Individual individual : individuals)
-			if (!files.containsKey(individual.getId()))
+		for (String individual : sampleIndexToIndividualMapToExport.values())
+			if (!files.containsKey(individual))
 			{
-				File file = File.createTempFile(exportID.replaceAll("\\|", "&curren;") +  "-" + individual.getId() + "-",".tsv");
-				files.put(individual.getId(), file);
+				File file = File.createTempFile(exportID.replaceAll("\\|", "&curren;") +  "-" + individual + "-", ".tsv");
+				files.put(individual, file);
 				if (i == 0)
 					LOG.debug("First temp file for export " + exportID + ": " + file.getPath());
-				files.put(individual.getId(), file);
+				files.put(individual, file);
 				BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(file));
-				os.write((individual.getId() + LINE_SEPARATOR).getBytes());
+				os.write((individual + LINE_SEPARATOR).getBytes());
 				os.close();
 				i++;
 			}
@@ -176,7 +147,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 
 			HashMap<String, StringBuffer> individualGenotypeBuffers = new HashMap<String, StringBuffer>();	// keeping all files open leads to failure (see ulimit command), keeping them closed and reopening them each time we need to write a genotype is too time consuming: so our compromise is to reopen them only once per chunk
 			List<Comparable> currentMarkers = new ArrayList<Comparable>(markerChromosomalPositions.keySet());
-			LinkedHashMap<VariantData, Collection<VariantRunData>> variantsAndRuns = MgdbDao.getSampleGenotypes(mongoTemplate, sampleIDs, currentMarkers, true, null /*new Sort(VariantData.FIELDNAME_REFERENCE_POSITION + "." + ChromosomalPosition.FIELDNAME_SEQUENCE).and(new Sort(VariantData.FIELDNAME_REFERENCE_POSITION + "." + ChromosomalPosition.FIELDNAME_START_SITE))*/);	// query mongo db for matching genotypes
+			LinkedHashMap<VariantData, Collection<VariantRunData>> variantsAndRuns = MgdbDao.getSampleGenotypes(mongoTemplate, sampleIndexToIndividualMapToExport.keySet(), currentMarkers, true, null /*new Sort(VariantData.FIELDNAME_REFERENCE_POSITION + "." + ChromosomalPosition.FIELDNAME_SEQUENCE).and(new Sort(VariantData.FIELDNAME_REFERENCE_POSITION + "." + ChromosomalPosition.FIELDNAME_START_SITE))*/);	// query mongo db for matching genotypes
 			VariantData[] variants = variantsAndRuns.keySet().toArray(new VariantData[variantsAndRuns.size()]);
 
 			for (i=0; i<variantsAndRuns.size(); i++)	// read data and write results into temporary files (one per sample)
@@ -191,16 +162,16 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 						{
 							SampleGenotype sampleGenotype = run.getSampleGenotypes().get(sampleIndex);
 							List<String> alleles = variants[i].getAllelesFromGenotypeCode(sampleGenotype.getCode());
-							String individualName = individuals.get(sampleIDs.indexOf(new SampleId(run.getId().getProjectId(), sampleIndex))).getId();
+							String individualId = sampleIndexToIndividualMapToExport.get(new SampleId(run.getId().getProjectId(), sampleIndex));
 							
-							if (!VariantData.gtPassesVcfAnnotationFilters(individualName, sampleGenotype, individuals1, annotationFieldThresholds, individuals2, annotationFieldThresholds2))
+							if (!VariantData.gtPassesVcfAnnotationFilters(individualId, sampleGenotype, individuals1, annotationFieldThresholds, individuals2, annotationFieldThresholds2))
 								continue;	// skip genotype
 	
-							List<String> storedIndividualGenotypes = individualGenotypes.get(individualName);
+							List<String> storedIndividualGenotypes = individualGenotypes.get(individualId);
 							if (storedIndividualGenotypes == null)
 							{
 								storedIndividualGenotypes = new ArrayList<String>();
-								individualGenotypes.put(individualName, storedIndividualGenotypes);
+								individualGenotypes.put(individualId, storedIndividualGenotypes);
 							}
 	
 							String sAlleles = StringUtils.join(alleles, ' ');
@@ -232,19 +203,19 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 			}
 			
 			// write genotypes collected in this chunk to each individual's file
-			for (Individual individual : individuals)
+			for (String individual : sampleIndexToIndividualMapToExport.values())
 			{
-				BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(files.get(individual.getId()), true));
-				StringBuffer chunkStringBuffer = individualGenotypeBuffers.get(individual.getId());
+				BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(files.get(individual), true));
+				StringBuffer chunkStringBuffer = individualGenotypeBuffers.get(individual);
 				if (chunkStringBuffer != null)
 					os.write(chunkStringBuffer.toString().getBytes());
 				
 				// deal with trailing missing genotypes
-				Integer gtCount = Helper.getCountForKey(individualOutputGenotypeCounts, individual.getId());
+				Integer gtCount = Helper.getCountForKey(individualOutputGenotypeCounts, individual);
 				while (gtCount < nLoadedMarkerCount + currentMarkers.size())
 				{
 					os.write(LINE_SEPARATOR.getBytes());
-					individualOutputGenotypeCounts.put(individual.getId(), ++gtCount);
+					individualOutputGenotypeCounts.put(individual, ++gtCount);
 				}
 				os.close();
 			}

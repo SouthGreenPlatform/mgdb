@@ -805,11 +805,11 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 
         pipeline.add(new BasicDBObject("$project", new BasicDBObject("_id", "$_id" + (!fGotIndividualsWithMultipleSamples ? "." + VariantRunDataId.FIELDNAME_VARIANT_ID : ""))));
 
-        if (nNextCallCount == 1)
-        {
-        	try { System.out.println(new ObjectMapper().defaultPrettyPrintingWriter().writeValueAsString(pipeline.subList(1, pipeline.size()))); }
-        	catch (Exception ignored) {}
-        }
+//        if (nNextCallCount == 1)
+//        {
+//        	try { System.out.println(new ObjectMapper().defaultPrettyPrintingWriter().writeValueAsString(pipeline.subList(1, pipeline.size()))); }
+//        	catch (Exception ignored) {}
+//        }
         return pipeline;
     }
 		

@@ -269,11 +269,11 @@ public class MgdbDao
 			if (returnedFields == null)
 			{
 				returnedFields = new ArrayList<String>();
-				returnedFields.add(/*VariantData.FIELDNAME_PROJECT_DATA + "." + sampleID.getProject() + "." + */"_class");
-				returnedFields.add(/*VariantData.FIELDNAME_PROJECT_DATA + "." + sampleID.getProject() + "." + */VariantRunData.SECTION_ADDITIONAL_INFO);
+				returnedFields.add("_class");
+				returnedFields.add(VariantRunData.SECTION_ADDITIONAL_INFO);
 				projectIdToReturnedRunFieldListMap.put(sampleID.getProject(), returnedFields);
 			}
-			returnedFields.add(/*VariantData.FIELDNAME_PROJECT_DATA + "." + sampleID.getProject() + "." + */VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + sampleID.getSampleIndex());
+			returnedFields.add(VariantRunData.FIELDNAME_SAMPLEGENOTYPES + "." + sampleID.getSampleIndex());
 		}
 
 		LinkedHashMap<VariantData, Collection<VariantRunData>> result = getSampleGenotypes(mongoTemplate, variantFieldsToReturn, projectIdToReturnedRunFieldListMap, variantIdListToRestrictTo, sort);
@@ -294,5 +294,44 @@ public class MgdbDao
             }
         }
         return result;
+    }
+    
+	/**
+	 * Gets the individuals from samples.
+	 *
+	 * @param sModule the module
+	 * @param sampleIDs the sample ids
+	 * @return the individuals from samples
+	 */
+	public static List<Individual> getIndividualsFromSamples(final String sModule, final List<SampleId> sampleIDs)
+	{
+		MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
+		HashMap<Integer, GenotypingProject> loadedProjects = new HashMap<Integer, GenotypingProject>();
+		ArrayList<Individual> result = new ArrayList<Individual>();
+		for (SampleId spId : sampleIDs)
+		{
+			GenotypingProject project = loadedProjects.get(spId.getProject());
+			if (project == null)
+			{
+				project = mongoTemplate.findById(spId.getProject(), GenotypingProject.class);
+				loadedProjects.put(spId.getProject(), project);
+			}
+			Integer spIndex = spId.getSampleIndex();
+			String individual = project.getSamples().get(spIndex).getIndividual();
+			result.add(mongoTemplate.findById(individual, Individual.class));
+		}
+		return result;
+	}
+    
+    /**
+     * Gets the individual population.
+     *
+     * @param sModule the module
+     * @param individual the individual
+     * @return the individual population
+     */
+    public static String getIndividualPopulation(final String sModule, final String individual) {
+        MongoTemplate mongoTemplate = MongoTemplateManager.get(sModule);
+        return mongoTemplate.findById(individual, Individual.class).getPopulation();
     }
 }

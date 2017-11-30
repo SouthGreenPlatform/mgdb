@@ -67,9 +67,10 @@ public abstract class AbstractMarkerOrientedExportHandler implements IExportHand
 	 * @param nMinimumReadDepth the n minimum read depth
 	 * @param annotationFieldThresholds the annotation field thresholds for group 1
 	 * @param annotationFieldThresholds2 the annotation field thresholds for group 2
+	 * @param sampleIndexToIndividualMapToExport 
 	 * @throws Exception the exception
 	 */
-	abstract public void exportData(OutputStream outputStream, String sModule, List<SampleId> sampleIDs1, List<SampleId> sampleIDs2, ProgressIndicator progress, DBCursor markerCursor, Map<Comparable, Comparable> markerSynonyms, HashMap<String, Integer> annotationFieldThresholds, HashMap<String, Integer> annotationFieldThresholds2, Map<String, InputStream> readyToExportFiles) throws Exception;
+	abstract public void exportData(OutputStream outputStream, String sModule, List<SampleId> sampleIDs1, List<SampleId> sampleIDs2, ProgressIndicator progress, DBCursor markerCursor, Map<Comparable, Comparable> markerSynonyms, HashMap<String, Integer> annotationFieldThresholds, HashMap<String, Integer> annotationFieldThresholds2, Map<SampleId, String> sampleIndexToIndividualMapToExport, Map<String, InputStream> readyToExportFiles) throws Exception;
 
 	/**
 	 * Gets the individuals from samples.
