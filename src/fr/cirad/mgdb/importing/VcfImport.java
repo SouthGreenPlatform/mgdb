@@ -29,6 +29,7 @@ import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 
 import java.io.File;
@@ -586,9 +587,10 @@ public class VcfImport extends AbstractGenotypeImport {
             Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
             for (String sAttrName : extendedAttributes.keySet()) {
             	VCFFormatHeaderLine formatHeaderLine = header.getFormatHeaderLine(sAttrName);
-            	boolean fConvertToInteger = formatHeaderLine.isFixedCount() && formatHeaderLine.getCount() == 1;
+            	boolean fConvertToNumber = (formatHeaderLine.getType().equals(VCFHeaderLineType.Integer) || formatHeaderLine.getType().equals(VCFHeaderLineType.Float)) && formatHeaderLine.isFixedCount() && formatHeaderLine.getCount() == 1;
+            	boolean fConvertToNumberWithDecimals = fConvertToNumber && formatHeaderLine.getType().equals(VCFHeaderLineType.Float);
             	String value = extendedAttributes.get(sAttrName).toString();
-                aGT.getAdditionalInfo().put(sAttrName, fConvertToInteger ? Integer.parseInt(value) : value);
+                aGT.getAdditionalInfo().put(sAttrName, fConvertToNumber ? (fConvertToNumberWithDecimals ? Float.parseFloat(value) : Integer.parseInt(value)) : value);
             }
 
             if (genotype.isFiltered()) {
