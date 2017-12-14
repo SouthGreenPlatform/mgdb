@@ -115,7 +115,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
     /**
      * The temp export prefix.
      */
-    static public String TEMP_EXPORT_PREFIX = "tmpVar_";
+    static public String TEMP_COLL_PREFIX = "tmpVar_";
 
     /**
      * The dot replacement string.
@@ -170,7 +170,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
             String connectPoint = mongoTemplate.getDb().getMongo().getConnectPoint();
             if (authorizedCleanupServers == null || authorizedCleanupServers.contains(connectPoint)) {
                 for (String collName : mongoTemplate.getCollectionNames()) {
-                    if (collName.startsWith(TEMP_EXPORT_PREFIX)) {
+                    if (collName.startsWith(TEMP_COLL_PREFIX)) {
                         mongoTemplate.dropCollection(collName);
                         LOG.debug("Dropped collection " + collName + " in module " + sModule);
                     }
@@ -242,6 +242,11 @@ public class MongoTemplateManager implements ApplicationContextAware {
 
                 boolean fHidden = key.endsWith("*"), fPublic = key.startsWith("*");
                 String cleanKey = key.replaceAll("\\*", "");
+                if (cleanKey.length() == 0)
+                {
+                	LOG.warn("Skipping unnamed datasource");
+                	continue;
+                }
 
                 if (templateMap.containsKey(cleanKey)) {
                     LOG.error("Datasource " + cleanKey + " already exists!");
@@ -433,7 +438,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
     		return;
     	
         DBCollection tmpColl;
-        String tempCollName = MongoTemplateManager.TEMP_EXPORT_PREFIX + Helper.convertToMD5(token);
+        String tempCollName = MongoTemplateManager.TEMP_COLL_PREFIX + Helper.convertToMD5(token);
         for (String module : MongoTemplateManager.getTemplateMap().keySet()) {
             // drop all temp collections associated to this token
             tmpColl = templateMap.get(module).getCollection(tempCollName);
