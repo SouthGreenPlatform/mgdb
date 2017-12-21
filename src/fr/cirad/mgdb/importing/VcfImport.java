@@ -299,7 +299,7 @@ public class VcfImport extends AbstractGenotypeImport {
                 try
                 {
                 	Comparable variantId = null;
-					for (String variantDescForPos : getIdentificationStrings(Type.SNP.toString(), vcfEntry.getChr(), (long) vcfEntry.getStart(), Arrays.asList(new String[] {vcfEntry.getID()})))
+					for (String variantDescForPos : getIdentificationStrings(vcfEntry.getType().toString(), vcfEntry.getChr(), (long) vcfEntry.getStart(), Arrays.asList(new String[] {vcfEntry.getID()})))
 					{
 						variantId = existingVariantIDs.get(variantDescForPos);
 						if (variantId != null)
