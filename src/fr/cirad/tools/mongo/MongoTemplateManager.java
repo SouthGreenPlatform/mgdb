@@ -18,6 +18,7 @@
  */
 package fr.cirad.tools.mongo;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -310,6 +311,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
         SimpleMongoDbFactory factory = new SimpleMongoDbFactory(client, sDbName);
         MongoTemplate mongoTemplate = new MongoTemplate(factory);
         ((MappingMongoConverter) mongoTemplate.getConverter()).setMapKeyDotReplacement(DOT_REPLACEMENT_STRING);
+		mongoTemplate.getDb().command(new BasicDBObject("profile", 0));
 
         return mongoTemplate;
     }
