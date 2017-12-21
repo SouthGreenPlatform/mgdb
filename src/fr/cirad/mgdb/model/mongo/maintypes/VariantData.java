@@ -709,8 +709,17 @@ public class VariantData
 							}
 							gb.AD(adArray);
 						}
-						else
-							gb.noAD();
+					}
+					else if (VCFConstants.DEPTH_KEY.equals(key) || VCFConstants.GENOTYPE_QUALITY_KEY.equals(key))
+					{
+						Integer value = (Integer) sampleGenotype.getAdditionalInfo().get(key);
+						if (value != null)
+						{
+							if (VCFConstants.DEPTH_KEY.equals(key))
+								gb.DP(value);
+							else
+								gb.GQ(value);
+						}
 					}
 					else if (VCFConstants.GENOTYPE_PL_KEY.equals(key) || VCFConstants.GENOTYPE_LIKELIHOODS_KEY.equals(key))
 					{
@@ -722,8 +731,6 @@ public class VariantData
 								plArray = VariantData.fixPlFieldValue(plArray, individualAlleles.size(), alleleListAtImportTimeIfDifferentFromNow, knownAlleleList);
 							gb.PL(plArray);
 						}
-						else
-							gb.noPL();
 					}
 					else if (!key.equals(VariantData.GT_FIELD_PHASED_GT) && !key.equals(VariantData.GT_FIELD_PHASED_ID) && !key.equals(VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_GENE) && !key.equals(VariantRunData.FIELDNAME_ADDITIONAL_INFO_EFFECT_NAME)) // exclude some internally created fields that we don't want to export
 						gb.attribute(key, sampleGenotype.getAdditionalInfo().get(key)); // looks like we have an extended attribute
