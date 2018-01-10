@@ -220,7 +220,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
         int projId = Integer.parseInt(info[1]);
 
 		this.mongoTemplate = MongoTemplateManager.get(sModule);
-		this.genotypingProject = (GenotypingProject) mongoTemplate.findById(Integer.valueOf(projId), GenotypingProject.class);
+		this.genotypingProject = mongoTemplate.findById(Integer.valueOf(projId), GenotypingProject.class);
 		this.geneNames = gsvr.getGeneName();
 		this.variantEffects = gsvr.getVariantEffect();
 
