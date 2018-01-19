@@ -156,7 +156,7 @@ public class VcfImport extends AbstractGenotypeImport {
             VCFCodec vc = new VCFCodec();
             reader = AbstractFeatureReader.getFeatureReader(mainFilePath, vc, false);
         }
-        // non compatible java 1.8 ? 
+        // not compatible java 1.8 ? 
         // FeatureReader<VariantContext> reader = AbstractFeatureReader.getFeatureReader(mainFilePath, fIsBCF ? new BCF2Codec() : new VCFCodec(), false);
         GenericXmlApplicationContext ctx = null;
         try {
@@ -337,7 +337,7 @@ public class VcfImport extends AbstractGenotypeImport {
                         unsavedRuns.clear();
 
                         progress.setCurrentStepProgress(count);
-                        if (count > 0) {
+                        if (count > 0 && count % (nNumberOfVariantsToSaveAtOnce*10) == 0) {
                             info = count + " lines processed"/*"(" + (System.currentTimeMillis() - before) / 1000 + ")\t"*/;
                             LOG.debug(info);
                         }
@@ -442,16 +442,14 @@ public class VcfImport extends AbstractGenotypeImport {
 
         // main VCF fields that are stored as additional info in the DB
         HashMap<String, Object> info = run.getAdditionalInfo();
-        if (vc.isFullyDecoded()) {
+        if (vc.isFullyDecoded())
             info.put(VariantData.FIELD_FULLYDECODED, true);
-        }
-        info.put(VariantData.FIELD_PHREDSCALEDQUAL, vc.getPhredScaledQual());
-        if (!VariantData.FIELDVAL_SOURCE_MISSING.equals(vc.getSource())) {
+        if (vc.hasLog10PError())
+        	info.put(VariantData.FIELD_PHREDSCALEDQUAL, vc.getPhredScaledQual());
+        if (!VariantData.FIELDVAL_SOURCE_MISSING.equals(vc.getSource()))
             info.put(VariantData.FIELD_SOURCE, vc.getSource());
-        }
-        if (vc.filtersWereApplied()) {
+        if (vc.filtersWereApplied())
             info.put(VariantData.FIELD_FILTERS, vc.getFilters().size() > 0 ? Helper.arrayToCsv(",", vc.getFilters()) : VCFConstants.PASSES_FILTERS_v4);
-        }
 
         List<String> aiEffect = new ArrayList<String>(), aiGene = new ArrayList<String>();
 
