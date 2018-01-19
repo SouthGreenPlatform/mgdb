@@ -525,7 +525,8 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	                {	// count alternate alleles
 	                	BasicDBList condList = new BasicDBList();
 	                    String allRefGtCode = genotypingProject.getPloidyLevel() != 1 ? "0/0" : "0";
-	                    condList.add(new BasicDBObject("$eq", new Object[] {fGotIndividualsWithMultipleSamples ? ("$$u" + g + "_" + j) : (possiblyConstrainedPathToGT), fGotIndividualsWithMultipleSamples ? new Object[] {allRefGtCode} : allRefGtCode}));
+	                    Object[] arrayOfPossibleValuesWithoutAlternateAllele = new Object[] {fGotIndividualsWithMultipleSamples ? new Object[] {allRefGtCode} : allRefGtCode, fGotIndividualsWithMultipleSamples ? new Object[] {""} : "", fGotIndividualsWithMultipleSamples ? new Object[] {null} : null};
+	                    condList.add(new BasicDBObject("$in", new Object[] {fGotIndividualsWithMultipleSamples ? ("$$u" + g + "_" + j) : (possiblyConstrainedPathToGT), arrayOfPossibleValuesWithoutAlternateAllele}));
 	                    condList.add(0);
 	                    if (genotypingProject.getPloidyLevel() == 1)
 	                        condList.add(2);
@@ -654,7 +655,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 					BasicDBList orMafMatch = new BasicDBList();
 					BasicDBList andMafMatch = new BasicDBList();
 					andMafMatch.add(new BasicDBObject("r.f" + g, new BasicDBObject("$gte", minmaf[g])));
-					andMafMatch.add(new BasicDBObject("r.f" + g, new BasicDBObject("$lte", minmaf[g])));
+					andMafMatch.add(new BasicDBObject("r.f" + g, new BasicDBObject("$lte", maxmaf[g])));
 					orMafMatch.add(new BasicDBObject("$and", andMafMatch));
 					andMafMatch = new BasicDBList();
 					andMafMatch.add(new BasicDBObject("r.f" + g, new BasicDBObject("$lte", Float.valueOf(100F - minmaf[g].floatValue()))));
