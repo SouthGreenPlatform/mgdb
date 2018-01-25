@@ -198,6 +198,37 @@ public class MongoTemplateManager implements ApplicationContextAware {
 
         loadDataSources();
     }
+    
+    static public void clearExpiredDatabases() {
+        try
+        {
+            ResourceBundle bundle = ResourceBundle.getBundle(resource, resourceControl);
+            Enumeration<String> bundleKeys = bundle.getKeys();
+
+            while (bundleKeys.hasMoreElements()) {
+				String key = bundleKeys.nextElement();
+				String[] datasourceInfo = bundle.getString(key).split(",");
+				
+				if (datasourceInfo.length < 2) {
+				    LOG.error("Unable to deal with datasource info for key " + key + ". Datasource definition requires at least 2 comma-separated strings: mongo host bean name (defined in Spring application context) and database name");
+				    continue;
+				}
+				
+				if (datasourceInfo[1].contains(EXPIRY_PREFIX)) {
+				    long expiryDate = Long.valueOf((datasourceInfo[1].substring(datasourceInfo[1].lastIndexOf(EXPIRY_PREFIX) + EXPIRY_PREFIX.length())));
+				    if (System.currentTimeMillis() > expiryDate) {
+				        removeDataSource(key, true);
+				        LOG.info("Removed expired datasource entry: " + key + " and temporary database: " + datasourceInfo[1]);
+				    }
+				}
+
+            }
+        }
+        catch (MissingResourceException mre)
+        {
+            LOG.error("Unable to find file " + resource + ".properties, you may need to adjust your classpath", mre);
+        }
+    }
 
     /**
      * Load data sources.
@@ -265,15 +296,15 @@ public class MongoTemplateManager implements ApplicationContextAware {
                     }
                     LOG.info("Datasource " + cleanKey + " loaded as " + (fPublic ? "public" : "private") + " and " + (fHidden ? "hidden" : "exposed"));
 
-                    if (datasourceInfo[1].contains(EXPIRY_PREFIX)) {
-                        long expiryDate = Long.valueOf((datasourceInfo[1].substring(datasourceInfo[1].lastIndexOf(EXPIRY_PREFIX) + EXPIRY_PREFIX.length())));
-                        if (System.currentTimeMillis() > expiryDate) {
-
-                            removeDataSource(key, true);
-                            LOG.info("Removed expired datasource entry: " + key);
-                            LOG.info("Dropped expired temporary database: " + datasourceInfo[1]);
-                        }
-                    }
+//                    if (datasourceInfo[1].contains(EXPIRY_PREFIX)) {
+//                        long expiryDate = Long.valueOf((datasourceInfo[1].substring(datasourceInfo[1].lastIndexOf(EXPIRY_PREFIX) + EXPIRY_PREFIX.length())));
+//                        if (System.currentTimeMillis() > expiryDate) {
+//
+//                            removeDataSource(key, true);
+//                            LOG.info("Removed expired datasource entry: " + key);
+//                            LOG.info("Dropped expired temporary database: " + datasourceInfo[1]);
+//                        }
+//                    }
 
                 }
                 catch (UnknownHostException e)

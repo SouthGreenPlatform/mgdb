@@ -318,7 +318,7 @@ public class VcfImport extends AbstractGenotypeImport {
                     }
 
                     if (count == 0) {
-                        nNumberOfVariantsToSaveAtOnce = Math.max(1, 30000 / vcfEntry.getSampleNames().size());
+                        nNumberOfVariantsToSaveAtOnce = vcfEntry.getSampleNames().isEmpty() ? 3000 : Math.max(1, 30000 / vcfEntry.getSampleNames().size());
                         LOG.info("Importing by chunks of size " + nNumberOfVariantsToSaveAtOnce);
                     }
                     if (count % nNumberOfVariantsToSaveAtOnce == 0) {
