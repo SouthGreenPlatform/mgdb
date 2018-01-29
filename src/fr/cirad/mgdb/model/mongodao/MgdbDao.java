@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
 import org.bson.types.ObjectId;
@@ -38,7 +39,6 @@ import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData.VariantRunDataId;
-import fr.cirad.mgdb.model.mongo.subtypes.GenotypingSample;
 import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.tools.mongo.MongoTemplateManager;
@@ -286,14 +286,7 @@ public class MgdbDao
         Query q = new Query();
         q.fields().include(GenotypingProject.FIELDNAME_SAMPLES);
        	q.addCriteria(Criteria.where("_id").is(projId));
-        GenotypingProject proj = mongoTemplate.findOne(q, GenotypingProject.class);
-        List<String> result = new ArrayList<>();
-        for (GenotypingSample gs : proj.getSamples().values()) {
-            if (!result.contains(gs.getIndividual())) {
-                result.add(gs.getIndividual());
-            }
-        }
-        return result;
+        return mongoTemplate.findOne(q, GenotypingProject.class).getSamples().values().stream().map(gs -> gs.getIndividual()).collect(Collectors.toList());
     }
     
 	/**
