@@ -190,12 +190,15 @@ public class ProgressIndicator
 	 */
 	public void setError(String error) {
 		m_error = error;
+//		LOG.debug("removing " + hashCode());
+//		final ProgressIndicator fpi = this;
 		new Timer().schedule(new TimerTask() {          
 		    @Override
 		    public void run() {
 		    	progressIndicators.remove(m_processId);
+//				LOG.debug("removed " + fpi.hashCode());
 		    }
-		}, 10000);
+		}, 1000);
 	}
 	
 	/**
