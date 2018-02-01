@@ -23,7 +23,6 @@ import com.mongodb.DBCollection;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -217,8 +216,8 @@ public class MongoTemplateManager implements ApplicationContextAware {
 				if (datasourceInfo[1].contains(EXPIRY_PREFIX)) {
 				    long expiryDate = Long.valueOf((datasourceInfo[1].substring(datasourceInfo[1].lastIndexOf(EXPIRY_PREFIX) + EXPIRY_PREFIX.length())));
 				    if (System.currentTimeMillis() > expiryDate) {
-				        removeDataSource(key, true);
-				        LOG.info("Removed expired datasource entry: " + key + " and temporary database: " + datasourceInfo[1]);
+				        if (removeDataSource(key, true))
+				        	LOG.info("Removed expired datasource entry: " + key + " and temporary database: " + datasourceInfo[1]);
 				    }
 				}
 
@@ -347,42 +346,154 @@ public class MongoTemplateManager implements ApplicationContextAware {
         return mongoTemplate;
     }
 
+    public enum ModuleAction {
+    	CREATE, UPDATE_STATUS, DELETE;
+    }
+    
     /**
-     * Creates the data source.
+     * Saves or updates a data source.
      *
-     * @param sModule the module
-     * @param sHost the host
-     * @param expiryDate the expiry date
+     * @param action the action to perform on the module
+     * @param sModule the module, with a leading * if public and/or a trailing * if hidden
+     * @param public flag telling whether or not the module shall be public, ignored for deletion
+	 * @param hidden flag telling whether or not the module shall be hidden, ignored for deletion
+     * @param sHost the host, only used for creation
+     * @param expiryDate the expiry date, only used for creation
      * @throws Exception the exception
      */
-    static public void createDataSource(String sModule, String sHost, Long expiryDate) throws Exception {
-
-        String sCleanModule = sModule.replaceAll("\\*", "");
-        int nRetries = 0;
-
-        while (nRetries < 100) {
-
-            String sIndexForModule = nRetries == 0 ? "" : ("_" + nRetries);
-            String sDbName = "mgdb_" + sCleanModule + sIndexForModule + (expiryDate == null ? "" : (EXPIRY_PREFIX + expiryDate));
-            MongoTemplate mongoTemplate = createMongoTemplate(sCleanModule, sHost, sDbName);
-            if (mongoTemplate.getCollectionNames().size() > 0) {
-                nRetries++;	// DB already exists, let's try with a different DB name
-            } else {
-                templateMap.put(sCleanModule, mongoTemplate);
-                FileWriter fw = new FileWriter(new ClassPathResource("/" + resource + ".properties").getFile().getPath(), true);
-                fw.write("\r\n" + sModule + "=" + sHost + "," + sDbName);
-                fw.close();
-
-                if (sModule.startsWith("*")) {
-                    publicDatabases.add(sCleanModule);
+    synchronized static public boolean saveOrUpdateDataSource(ModuleAction action, String sModule, boolean fPublic, boolean fHidden, String sHost, Long expiryDate) throws Exception
+    {	// as long as we keep all write operations in a single synchronized method, we should be safe
+    	if (get(sModule) == null)
+    	{
+    		if (!action.equals(ModuleAction.CREATE))
+    			throw new Exception("Module " + sModule + " does not exist!");
+    	}
+    	else if (action.equals(ModuleAction.CREATE))
+    		throw new Exception("Module " + sModule + " already exists!");
+    	
+    	FileOutputStream fos = null;
+        File f = new ClassPathResource("/" + resource + ".properties").getFile();
+    	FileReader fileReader = new FileReader(f);
+        Properties properties = new Properties();
+        properties.load(fileReader);
+        
+    	try
+    	{
+    		if (action.equals(ModuleAction.DELETE))
+    		{
+    	        String sModuleKey = (isModulePublic(sModule) ? "*" : "") + sModule + (isModuleHidden(sModule) ? "*" : "");
+                if (!properties.containsKey(sModuleKey))
+                {
+                	LOG.warn("Module could not be found in datasource.properties: " + sModule);
+                	return false;
                 }
-                if (sModule.endsWith("*")) {
-                    hiddenDatabases.add(sCleanModule);
+                properties.remove(sModuleKey);
+                fos = new FileOutputStream(f);
+                properties.store(fos, null);
+                return true;
+    		}
+	        else if (action.equals(ModuleAction.CREATE))
+	        {
+	            int nRetries = 0;
+		        while (nRetries < 100)
+		        {
+		            String sIndexForModule = nRetries == 0 ? "" : ("_" + nRetries);
+		            String sDbName = "mgdb_" + sModule + sIndexForModule + (expiryDate == null ? "" : (EXPIRY_PREFIX + expiryDate));
+		            MongoTemplate mongoTemplate = createMongoTemplate(sModule, sHost, sDbName);
+		            if (mongoTemplate.getCollectionNames().size() > 0)
+		                nRetries++;	// DB already exists, let's try with a different DB name
+		            else
+		            {
+		                if (properties.containsKey(sModule) || properties.containsKey("*" + sModule) || properties.containsKey(sModule + "*") || properties.containsKey("*" + sModule + "*"))
+		                {
+		                	LOG.warn("Tried to create a module that already exists in datasource.properties: " + sModule);
+		                	return false;
+		                }
+		                String sModuleKey = (fPublic ? "*" : "") + sModule + (fHidden ? "*" : "");
+		                properties.put(sModuleKey, sHost + "," + sDbName);
+		                fos = new FileOutputStream(f);
+		                properties.store(fos, null);
+
+		                templateMap.put(sModule, mongoTemplate);
+		                if (fPublic)
+		                    publicDatabases.add(sModule);
+		                if (fHidden)
+		                    hiddenDatabases.add(sModule);
+		                return true;
+		            }
+		        }
+		        throw new Exception("Unable to create a unique name for datasource " + sModule + " after " + nRetries + " retries");
+	        }
+	        else if (action.equals(ModuleAction.UPDATE_STATUS))
+	        {
+	        	String sModuleKey = (isModulePublic(sModule) ? "*" : "") + sModule + (isModuleHidden(sModule) ? "*" : "");
+                if (!properties.containsKey(sModuleKey))
+                {
+                	LOG.warn("Tried to update a module that could not be found in datasource.properties: " + sModule);
+                	return false;
                 }
-                return;
+                String hostAndDb = (String) properties.get(sModuleKey);
+                properties.remove(sModuleKey);
+                properties.put((fPublic ? "*" : "") + sModule + (fHidden ? "*" : ""), hostAndDb);
+                fos = new FileOutputStream(f);
+                properties.store(fos, null);
+                
+                if (fPublic)
+                    publicDatabases.add(sModule);
+                else
+                	publicDatabases.remove(sModule);
+                if (fHidden)
+                    hiddenDatabases.add(sModule);
+                else
+                	hiddenDatabases.remove(sModule);
+	        	return true;
+	        }
+	        else
+	        	throw new Exception("Unknown ModuleAction: " + action);
+        }
+    	catch (IOException ex)
+    	{
+            LOG.warn("Failed to update datasource.properties for action " + action + " on " + sModule, ex);
+            return false;
+        }
+    	finally
+    	{
+            try 
+            {
+           		fileReader.close();
+            	if (fos != null)
+            		fos.close();
+            } 
+            catch (IOException ex)
+            {
+                LOG.debug("Failed to close FileReader", ex);
             }
         }
-        throw new Exception("Unable to create a unique name for datasource " + sModule + " after " + nRetries + " retries");
+    }
+
+    /**
+     * Removes the data source.
+     *
+     * @param sModule the module
+     * @param fAlsoDropDatabase whether or not to also drop database
+     */
+    static public boolean removeDataSource(String sModule, boolean fAlsoDropDatabase)
+    {
+        try
+        {
+        	saveOrUpdateDataSource(ModuleAction.DELETE, sModule, false, false, null, null);	// only this unique synchronized method may write to file safely
+
+            String key = sModule.replaceAll("\\*", "");
+            if (fAlsoDropDatabase)
+                templateMap.get(key).getDb().dropDatabase();
+            templateMap.remove(key);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LOG.warn("Failed to remove " + sModule + " datasource.properties", ex);
+            return false;
+        }
     }
 
     /**
@@ -401,41 +512,6 @@ public class MongoTemplateManager implements ApplicationContextAware {
      */
     public static Map<String, String> getOntologyMap() {
         return ontologyMap;
-    }
-
-    /**
-     * Removes the data source.
-     *
-     * @param sModule the module
-     * @param fAlsoDropDatabase whether or not to also drop database
-     */
-    static public void removeDataSource(String sModule, boolean fAlsoDropDatabase) {
-
-        FileReader fileReader = null;
-        try {
-            File f = new ClassPathResource("/" + resource + ".properties").getFile();
-            Properties properties = new Properties();
-            fileReader = new FileReader(f);
-            properties.load(fileReader);
-            properties.remove(sModule);
-            FileOutputStream fos = new FileOutputStream(f);
-            properties.store(fos, null);
-            fos.close();
-
-            String key = sModule.replaceAll("\\*", "");
-            if (fAlsoDropDatabase) {
-                templateMap.get(key).getDb().dropDatabase();
-            }
-            templateMap.remove(key);
-        } catch (IOException ex) {
-            LOG.debug("fail to parse datasource.properties", ex);
-        } finally {
-            try {
-                fileReader.close();
-            } catch (IOException ex) {
-                LOG.debug("Failed to close FileReader", ex);
-            }
-        }
     }
 
     /**
@@ -532,11 +608,10 @@ public class MongoTemplateManager implements ApplicationContextAware {
     /**
      * Gets the mongo collection name.
      *
-     * @param clazz the clazz
+     * @param clazz the class
      * @return the mongo collection name
      */
-    public static String
-            getMongoCollectionName(Class clazz) {
+    public static String getMongoCollectionName(Class clazz) {
         Document document = (Document) clazz.getAnnotation(Document.class
         );
         if (document != null) {
