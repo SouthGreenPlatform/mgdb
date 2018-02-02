@@ -192,13 +192,13 @@ public class ProgressIndicator
 		m_error = error;
 //		LOG.debug("removing " + hashCode());
 //		final ProgressIndicator fpi = this;
-		new Timer().schedule(new TimerTask() {          
-		    @Override
-		    public void run() {
-		    	progressIndicators.remove(m_processId);
+//		new Timer().schedule(new TimerTask() {          
+//		    @Override
+//		    public void run() {
+//		    	progressIndicators.remove(m_processId);
 //				LOG.debug("removed " + fpi.hashCode());
-		    }
-		}, 1000);
+//		    }
+//		}, 0);
 	}
 	
 	/**
@@ -264,31 +264,41 @@ public class ProgressIndicator
 	 * Mark as complete.
 	 */
 	public void markAsComplete() {
-		m_fComplete = true;
+		setComplete(true);
 	}
 	
 	/**
-	 * Checks if is complete.
+	 * Checks if complete.
 	 *
-	 * @return true, if is complete
+	 * @return true, if complete
 	 */
 	public boolean isComplete() {
 		return m_fComplete;
 	}
+
+	protected void setComplete(boolean fComplete) {
+		m_fComplete = fComplete;
+	}
 	
 	/**
-	 * Gets the.
+	 * Gets by id.
 	 *
 	 * @param sProcessID the process id
 	 * @return the progress indicator
 	 */
-	public static ProgressIndicator get(String sProcessID)
+	public static ProgressIndicator get(final String sProcessID)
 	{
 		ProgressIndicator progress = progressIndicators.get(sProcessID);
-		if (progress != null && progress.isComplete())
+		if (progress != null && (progress.isComplete() || progress.hasAborted() || progress.getError() != null))
 		{
-			LOG.debug("removing ProgressIndicator " + progress.hashCode() + " for process " + sProcessID);
-			progressIndicators.remove(sProcessID);	// we don't want to keep them forever
+//			new Timer().schedule(new TimerTask() {          
+//			    @Override
+//			    public void run() {
+//					LOG.debug("removing ProgressIndicator " + progress.hashCode() + " for process " + sProcessID);
+			    	progressIndicators.remove(sProcessID);	// we don't want to keep them forever
+//					LOG.debug("removed " + fpi.hashCode());
+//			    }
+//			}, 0);
 		}
 
 //		LOG.debug("returning " + (progress == null ? progress : (progress.hashCode()  + ": " + progress.getProgressDescription())) + " for process " + sProcessID);
