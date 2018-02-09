@@ -23,6 +23,10 @@ import java.util.zip.ZipInputStream;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Unmarshaller;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+
+import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
 import jhi.brapi.api.BrapiBaseResource;
 import jhi.brapi.api.BrapiListResource;
 import jhi.brapi.api.Metadata;
@@ -35,14 +39,19 @@ import jhi.brapi.api.genomemaps.BrapiMarkerPosition;
 import jhi.brapi.api.germplasm.BrapiGermplasm;
 import jhi.brapi.api.markerprofiles.BrapiMarkerProfile;
 import jhi.brapi.api.studies.BrapiStudies;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
+import okio.Buffer;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
 public class BrapiClient
 {
+	private static final Logger LOG = Logger.getLogger(VariantData.class);
+
 	private BrapiService service;
 
 	private String username, password;
@@ -52,17 +61,42 @@ public class BrapiClient
 	private CallsUtils callsUtils;
 	private OkHttpClient httpClient;
 
+//	public OkHttpClient getHttpClient() {
+//		return httpClient;
+//	}
+
 	public void initService(String baseURL)
 		throws Exception
 	{
 		baseURL = baseURL.endsWith("/") ? baseURL : baseURL + "/";
 
 		// Tweak to make the timeout on Retrofit connections last longer
-		httpClient = new OkHttpClient.Builder()
-			.readTimeout(60, TimeUnit.SECONDS)
-			.connectTimeout(60, TimeUnit.SECONDS)
-			.build();
+//		httpClient = new OkHttpClient.Builder()
+//			.readTimeout(60, TimeUnit.SECONDS)
+//			.connectTimeout(60, TimeUnit.SECONDS)
+//			.build();
 
+		httpClient = new OkHttpClient.Builder()
+	            .addInterceptor(new Interceptor() {
+	                @Override
+	                public Response intercept(Chain chain) throws IOException {
+	                    Request request = chain.request();
+	                    if (LOG.getLevel().equals(Level.DEBUG)) {
+	                        LOG.debug(getClass().getName() + ": " + request.method() + " " + request.url());
+	                        LOG.debug(getClass().getName() + ": " + request.header("Cookie"));
+	                        RequestBody rb = request.body();
+	                        Buffer buffer = new Buffer();
+	                        if (rb != null)
+	                            rb.writeTo(buffer);
+	                        LOG.debug(getClass().getName() + ": " + "Payload- " + buffer.readUtf8());
+	                    }
+	                    return chain.proceed(request);
+	                }
+	            })
+	            .readTimeout(60, TimeUnit.SECONDS)
+	            .connectTimeout(60, TimeUnit.SECONDS)
+	            .build();
+		 
 		Retrofit retrofit = new Retrofit.Builder()
 			.baseUrl(baseURL)
 			.addConverterFactory(JacksonConverterFactory.create())
