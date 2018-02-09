@@ -27,14 +27,11 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
-import jhi.brapi.api.BrapiBaseResource;
 import jhi.brapi.api.BrapiListResource;
 import jhi.brapi.api.Metadata;
 import jhi.brapi.api.Pagination;
-import jhi.brapi.api.authentication.BrapiSessionToken;
 import jhi.brapi.api.calls.BrapiCall;
 import jhi.brapi.api.genomemaps.BrapiGenomeMap;
-import jhi.brapi.api.genomemaps.BrapiMapMetaData;
 import jhi.brapi.api.genomemaps.BrapiMarkerPosition;
 import jhi.brapi.api.germplasm.BrapiGermplasm;
 import jhi.brapi.api.markerprofiles.BrapiMarkerProfile;
@@ -61,10 +58,6 @@ public class BrapiClient
 	private CallsUtils callsUtils;
 	private OkHttpClient httpClient;
 
-//	public OkHttpClient getHttpClient() {
-//		return httpClient;
-//	}
-
 	public void initService(String baseURL)
 		throws Exception
 	{
@@ -81,9 +74,9 @@ public class BrapiClient
 	                @Override
 	                public Response intercept(Chain chain) throws IOException {
 	                    Request request = chain.request();
-	                    if (LOG.getLevel().equals(Level.DEBUG)) {
+	                    if (LOG.isEnabledFor(Level.DEBUG)) {
 	                        LOG.debug(getClass().getName() + ": " + request.method() + " " + request.url());
-	                        LOG.debug(getClass().getName() + ": " + request.header("Cookie"));
+//	                        LOG.debug(getClass().getName() + ": " + request.header("Cookie"));
 	                        RequestBody rb = request.body();
 	                        Buffer buffer = new Buffer();
 	                        if (rb != null)
