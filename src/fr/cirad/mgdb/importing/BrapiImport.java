@@ -266,9 +266,9 @@ public class BrapiImport extends AbstractGenotypeImport {
 			{
 				LOG.debug("Querying marker page " + markerPager.getPage());
 				Response<BrapiListResource<BrapiMarkerPosition>> response = service.getMapMarkerData(mapDbId, markerPager.getPageSize(), markerPager.getPage()).execute();
-					if (!response.isSuccessful())
-						throw new Exception(new String(response.errorBody().bytes()));
-				 BrapiListResource<BrapiMarkerPosition> positions = response.body();
+				if (!response.isSuccessful())
+					throw new Exception(new String(response.errorBody().bytes()));
+				BrapiListResource<BrapiMarkerPosition> positions = response.body();
 		
 				Map<String, VariantData> variantsToCreate = new HashMap<String, VariantData>();
 				for (BrapiMarkerPosition bmp : positions.data())
@@ -291,9 +291,9 @@ public class BrapiImport extends AbstractGenotypeImport {
 					
 					while (subPager.isPaging())
 					{
-						Response<BrapiListResource<BrapiMarker>> markerReponse = service.getMarkerInfo_byPost(variantsToCreate.keySet(), "exact", null, null, subPager.getPageSize(), subPager.getPage()).execute();
+						Response<BrapiListResource<BrapiMarker>> markerReponse = service.getMarkerInfo_byPost(variantsToCreate.keySet(), null, null, null, null, subPager.getPageSize(), subPager.getPage()).execute();
 						if (HttpServletResponse.SC_METHOD_NOT_ALLOWED == markerReponse.code())
-							markerReponse = service.getMarkerInfo(variantsToCreate.keySet(), "exact", null, null, subPager.getPageSize(), subPager.getPage()).execute();	// try with GET
+							markerReponse = service.getMarkerInfo(variantsToCreate.keySet(), null, null, null, null, subPager.getPageSize(), subPager.getPage()).execute();	// try with GET
 						if (!markerReponse.isSuccessful())
 							throw new Exception(new String(markerReponse.errorBody().bytes()));
 
@@ -368,7 +368,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 					gpProfiles = new ArrayList<String>();
 					germplasmToProfilesMap.put(markerPofile.getGermplasmDbId(), gpProfiles);
 				}
-				gpProfiles.add(markerPofile.getMarkerProfileDbId());
+				gpProfiles.add(markerPofile.getMarkerprofileDbId());
 			}
 			HashMap<String, String> profileToGermplasmMap = new HashMap<>();
 			for (String gp : germplasmToProfilesMap.keySet())
@@ -380,7 +380,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 			}
 
 			LOG.debug("Importing " + markerprofiles.size() + " individuals");
-			List<String> markerProfileIDs = markerprofiles.stream().map(BrapiMarkerProfile::getMarkerProfileDbId).collect(Collectors.toList());
+			List<String> markerProfileIDs = markerprofiles.stream().map(BrapiMarkerProfile::getMarkerprofileDbId).collect(Collectors.toList());
 			
 			long count = 0;			
 			int maxPloidyFound = 0;
