@@ -86,6 +86,11 @@ public class MongoTemplateManager implements ApplicationContextAware {
      * The template map.
      */
     static private Map<String, MongoTemplate> templateMap = new TreeMap<>();
+    
+    /**
+     * The species map.
+     */
+    static private Map<String, String> speciesMap = new TreeMap<>();
 
     /**
      * The public databases.
@@ -286,6 +291,8 @@ public class MongoTemplateManager implements ApplicationContextAware {
 
                 try
                 {
+                	if (datasourceInfo.length > 2)
+                		speciesMap.put(cleanKey, datasourceInfo[2]);
                     templateMap.put(cleanKey, createMongoTemplate(cleanKey, datasourceInfo[0], datasourceInfo[1]));
                     if (fPublic) {
                         publicDatabases.add(cleanKey);
@@ -358,10 +365,11 @@ public class MongoTemplateManager implements ApplicationContextAware {
      * @param public flag telling whether or not the module shall be public, ignored for deletion
 	 * @param hidden flag telling whether or not the module shall be hidden, ignored for deletion
      * @param sHost the host, only used for creation
+     * @param sSpeciesName scientific name of the species, optional, ignored for deletion
      * @param expiryDate the expiry date, only used for creation
      * @throws Exception the exception
      */
-    synchronized static public boolean saveOrUpdateDataSource(ModuleAction action, String sModule, boolean fPublic, boolean fHidden, String sHost, Long expiryDate) throws Exception
+    synchronized static public boolean saveOrUpdateDataSource(ModuleAction action, String sModule, boolean fPublic, boolean fHidden, String sHost, String sSpeciesName, Long expiryDate) throws Exception
     {	// as long as we keep all write operations in a single synchronized method, we should be safe
     	if (get(sModule) == null)
     	{
@@ -410,7 +418,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
 		                	return false;
 		                }
 		                String sModuleKey = (fPublic ? "*" : "") + sModule + (fHidden ? "*" : "");
-		                properties.put(sModuleKey, sHost + "," + sDbName);
+		                properties.put(sModuleKey, sHost + "," + sDbName + (sSpeciesName == null ? "" : ("," + sSpeciesName)));
 		                fos = new FileOutputStream(f);
 		                properties.store(fos, null);
 
@@ -432,9 +440,9 @@ public class MongoTemplateManager implements ApplicationContextAware {
                 	LOG.warn("Tried to update a module that could not be found in datasource.properties: " + sModule);
                 	return false;
                 }
-                String hostAndDb = (String) properties.get(sModuleKey);
+                String[] propValues = ((String) properties.get(sModuleKey)).split(",");
                 properties.remove(sModuleKey);
-                properties.put((fPublic ? "*" : "") + sModule + (fHidden ? "*" : ""), hostAndDb);
+                properties.put((fPublic ? "*" : "") + sModule + (fHidden ? "*" : ""), propValues[0] + "," + propValues[1] + (sSpeciesName == null ? "" : ("," + sSpeciesName)));
                 fos = new FileOutputStream(f);
                 properties.store(fos, null);
                 
@@ -481,7 +489,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
     {
         try
         {
-        	saveOrUpdateDataSource(ModuleAction.DELETE, sModule, false, false, null, null);	// only this unique synchronized method may write to file safely
+        	saveOrUpdateDataSource(ModuleAction.DELETE, sModule, false, false, null, null, null);	// only this unique synchronized method may write to file safely
 
             String key = sModule.replaceAll("\\*", "");
             if (fAlsoDropDatabase)
@@ -629,5 +637,9 @@ public class MongoTemplateManager implements ApplicationContextAware {
             mongoTemplate.getDb().getMongo().close();
         }
     }
+
+	public static String getSpecies(String database) {
+		return speciesMap.get(database);
+	}
 
 }
