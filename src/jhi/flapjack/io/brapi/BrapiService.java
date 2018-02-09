@@ -36,14 +36,14 @@ public interface BrapiService
 	Call<BrapiListResource<BrapiMarkerPosition>> getMapMarkerData(@Path("id") String id, @Query("pageSize") String pageSize, @Query("page") String page);
 
 	@GET("markers")
-	Call<BrapiListResource<BrapiMarker>> getMarkerInfo(@Query("name") Set<String> name, @Query("matchMethod") String matchMethod, @Query("include") String include, @Query("type") String type, @Query("pageSize") String pageSize, @Query("page") String page);
+	Call<BrapiListResource<BrapiMarker>> getMarkerInfo(@Query("markerDbIds") Set<String> markerDbIds, @Query("name") Set<String> name, @Query("matchMethod") String matchMethod, @Query("include") String include, @Query("type") String type, @Query("pageSize") String pageSize, @Query("page") String page);
 
 	@FormUrlEncoded
 	@POST("markers")
-	Call<BrapiListResource<BrapiMarker>> getMarkerInfo_byPost(@Field("name") Set<String> name, @Field("matchMethod") String matchMethod, @Field("include") String include, @Field("type") String type, @Field("pageSize") String pageSize, @Field("page") String page);
+	Call<BrapiListResource<BrapiMarker>> getMarkerInfo_byPost(@Field("markerDbIds") Set<String> markerDbIds, @Field("name") Set<String> name, @Field("matchMethod") String matchMethod, @Field("include") String include, @Field("type") String type, @Field("pageSize") String pageSize, @Field("page") String page);
 
 	@GET("markerprofiles")
-	Call<BrapiListResource<BrapiMarkerProfile>> getMarkerProfiles(@Query("studyDbId") String studyDbId, @Query("germplasm") Collection<String> germplasmDbIDs, @Query("pageSize") String pageSize, @Query("page") String page);
+	Call<BrapiListResource<BrapiMarkerProfile>> getMarkerProfiles(@Query("studyDbId") String studyDbId, @Query("germplasmDbId") Collection<String> germplasmDbIDs, @Query("pageSize") String pageSize, @Query("page") String page);
 
 //	@FormUrlEncoded
 //	@POST(value="allelematrix-search")
