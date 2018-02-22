@@ -1,27 +1,24 @@
 // Copyright 2009-2016 Information & Computational Sciences, JHI. All rights
 // reserved. Use is subject to the accompanying licence terms.
 
-package jhi.flapjack.io.brapi;
+package fr.cirad.io.brapi;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Unmarshaller;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -31,11 +28,7 @@ import jhi.brapi.api.BrapiListResource;
 import jhi.brapi.api.Metadata;
 import jhi.brapi.api.Pagination;
 import jhi.brapi.api.calls.BrapiCall;
-import jhi.brapi.api.genomemaps.BrapiGenomeMap;
-import jhi.brapi.api.genomemaps.BrapiMarkerPosition;
-import jhi.brapi.api.germplasm.BrapiGermplasm;
 import jhi.brapi.api.markerprofiles.BrapiMarkerProfile;
-import jhi.brapi.api.studies.BrapiStudies;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -69,26 +62,7 @@ public class BrapiClient
 //			.connectTimeout(60, TimeUnit.SECONDS)
 //			.build();
 
-		httpClient = new OkHttpClient.Builder()
-	            .addInterceptor(new Interceptor() {
-	                @Override
-	                public Response intercept(Chain chain) throws IOException {
-	                    Request request = chain.request();
-	                    if (LOG.isEnabledFor(Level.DEBUG)) {
-	                        LOG.debug(getClass().getName() + ": " + request.method() + " " + request.url());
-//	                        LOG.debug(getClass().getName() + ": " + request.header("Cookie"));
-	                        RequestBody rb = request.body();
-	                        Buffer buffer = new Buffer();
-	                        if (rb != null)
-	                            rb.writeTo(buffer);
-	                        LOG.debug(getClass().getName() + ": " + "Payload- " + buffer.readUtf8());
-	                    }
-	                    return chain.proceed(request);
-	                }
-	            })
-	            .readTimeout(60, TimeUnit.SECONDS)
-	            .connectTimeout(60, TimeUnit.SECONDS)
-	            .build();
+		httpClient = getUnsafeOkHttpClient();
 		 
 		Retrofit retrofit = new Retrofit.Builder()
 			.baseUrl(baseURL)
@@ -98,6 +72,68 @@ public class BrapiClient
 
 		service = retrofit.create(BrapiService.class);
 	}
+	
+	public static OkHttpClient getUnsafeOkHttpClient() {
+        try {
+            // Create a trust manager that does not validate certificate chains
+            final TrustManager[] trustAllCerts = new TrustManager[] {
+                    new X509TrustManager() {
+                        @Override
+                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                        }
+
+                        @Override
+                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                        }
+
+                        @Override
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                            return new java.security.cert.X509Certificate[]{};
+                        }
+                    }
+            };
+
+            // Install the all-trusting trust manager
+            final SSLContext sslContext = SSLContext.getInstance("SSL");
+            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+
+            // Create an ssl socket factory with our all-trusting manager
+            final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+
+            OkHttpClient.Builder builder = new OkHttpClient.Builder();
+            builder.sslSocketFactory(sslSocketFactory, (X509TrustManager)trustAllCerts[0]);
+            builder.hostnameVerifier(new HostnameVerifier() {
+                @Override
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            });
+
+            OkHttpClient okHttpClient = builder.addInterceptor(new Interceptor() {
+                @Override
+                public Response intercept(Chain chain) throws IOException {
+                    Request request = chain.request();
+                    if (LOG.isEnabledFor(Level.DEBUG)) {
+                        LOG.debug(getClass().getName() + ": " + request.method() + " " + request.url());
+//                        LOG.debug(getClass().getName() + ": " + request.header("Cookie"));
+                        RequestBody rb = request.body();
+                        Buffer buffer = new Buffer();
+                        if (rb != null)
+                            rb.writeTo(buffer);
+                        LOG.debug(getClass().getName() + ": " + "Payload- " + buffer.readUtf8());
+                    }
+                    return chain.proceed(request);
+                }
+            })
+            .readTimeout(60, TimeUnit.SECONDS)
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .build();
+            
+            return okHttpClient;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 	private String enc(String str)
 	{
@@ -141,120 +177,6 @@ public class BrapiClient
 		return service;
 	}
 
-	// Returns a list of available maps
-	public List<BrapiGenomeMap> getMaps()
-		throws Exception
-	{
-		List<BrapiGenomeMap> list = new ArrayList<>();
-		Pager pager = new Pager();
-
-		while (pager.isPaging())
-		{
-			BrapiListResource<BrapiGenomeMap> br = service.getMaps(null, pager.getPageSize(), pager.getPage())
-				.execute()
-				.body();
-
-			list.addAll(br.data());
-
-			pager.paginate(br.getMetadata());
-		}
-
-		return list;
-	}
-	
-//	// Returns the details (type, synonyms...) for a given marker
-//	public List<BrapiMarker> getMarkerInfo()
-//		throws Exception
-//	{
-//		List<BrapiMarker> list = new ArrayList<>();
-//		Pager pager = new Pager();
-//
-//		while (pager.isPaging())
-//		{
-//			BrapiListResource<BrapiMarkerPosition> br = service.getMarkerInfo(enc(mapID), pager.getPageSize(), pager.getPage())
-//				.execute()
-//				.body();
-//
-//			list.addAll(br.data());
-//
-//			pager.paginate(br.getMetadata());
-//		}
-//
-//		return list;
-//	}
-
-	// Returns the details (markers, chromosomes, positions) for a given map
-	public List<BrapiMarkerPosition> getMapMarkerData()
-		throws Exception
-	{
-		List<BrapiMarkerPosition> list = new ArrayList<>();
-		Pager pager = new Pager();
-
-		while (pager.isPaging())
-		{
-			BrapiListResource<BrapiMarkerPosition> br = service.getMapMarkerData(enc(mapID), pager.getPageSize(), pager.getPage())
-				.execute()
-				.body();
-
-			list.addAll(br.data());
-
-			pager.paginate(br.getMetadata());
-		}
-
-		return list;
-	}
-
-//	public BrapiMapMetaData getMapMetaData()
-//		throws Exception
-//	{
-//		BrapiBaseResource<BrapiMapMetaData> br = service.getMapMetaData(enc(mapID))
-//			.execute()
-//			.body();
-//
-//		return br.getResult();
-//	}
-
-	// Returns a list of available studies
-	public List<BrapiStudies> getStudies()
-		throws Exception
-	{
-		List<BrapiStudies> list = new ArrayList<>();
-		Pager pager = new Pager();
-//		pager.setPageSize("10");
-
-		while (pager.isPaging())
-		{
-			BrapiListResource<BrapiStudies> br = service.getStudies("genotype", pager.getPageSize(), pager.getPage())
-				.execute()
-				.body();
-
-			list.addAll(br.data());
-
-			pager.paginate(br.getMetadata());
-		}
-
-		return list;
-	}
-	
-
-	public List<BrapiGermplasm> getStudyGerplasmDetails() throws IOException {
-		List<BrapiGermplasm> list = new ArrayList<>();
-		Pager pager = new Pager();
-
-		while (pager.isPaging())
-		{
-			BrapiListResource<BrapiGermplasm> br = service.getStudyGerplasmDetails(studyID, pager.getPageSize(), pager.getPage())
-				.execute()
-				.body();
-
-			list.addAll(br.data());
-
-			pager.paginate(br.getMetadata());
-		}
-
-		return list;
-	}
-
 	public List<BrapiMarkerProfile> getMarkerProfiles()
 		throws Exception
 	{
@@ -275,86 +197,6 @@ public class BrapiClient
 		return list;
 	}
 
-
-//	public List<BrapiAlleleMatrix> getAlleleMatrix(List<BrapiMarkerProfile> markerprofiles, List<BrapiMarker> markers)
-//		throws Exception
-//	{
-//		List<BrapiAlleleMatrix> list = new ArrayList<>();
-//		Pager pager = new Pager();
-//		pager.setPageSize("1000");
-//
-//		List<String> markerProfileIDs = markerprofiles.stream().map(BrapiMarkerProfile::getMarkerProfileDbId).collect(Collectors.toList());
-//		List<String> markerIDs = markers == null ? null : markers.stream().map(BrapiMarker::getMarkerDbId).collect(Collectors.toList());
-//
-//		while (pager.isPaging())
-//		{
-//			BrapiBaseResource<BrapiAlleleMatrix> br = service.getAlleleMatrix(markerProfileIDs, markerIDs, null, pager.getPageSize(), pager.getPage())
-//				.execute()
-//				.body();
-//
-//			ArrayList<BrapiAlleleMatrix> temp = new ArrayList<>();
-//			temp.add(br.getResult());
-//			list.addAll(temp);
-//
-//			pager.paginate(br.getMetadata());
-//		}
-//
-//		return list;
-//	}
-
-//	public URI getAlleleMatrixTSV(List<BrapiMarkerProfile> markerprofiles, List<BrapiMarker> markers)
-//		throws Exception
-//	{
-//		List<String> markerProfileIDs = markerprofiles.stream().map(BrapiMarkerProfile::getMarkerProfileDbId).collect(Collectors.toList());
-//		List<String> markerIDs = markers == null ? null : markers.stream().map(BrapiMarker::getMarkerDbId).collect(Collectors.toList());
-//
-//		BrapiBaseResource<BrapiAlleleMatrix> br = service.getAlleleMatrix(markerProfileIDs, markerIDs, "tsv", null, null)
-//			.execute()
-//			.body();
-//
-//		Metadata md = br.getMetadata();
-//		List<String> files = md.getDatafiles();
-//
-//		return new URI(files.get(0));
-//	}
-
-	public XmlBrapiProvider getBrapiProviders()
-		throws Exception, IOException
-	{
-		URL url = new URL("https://ics.hutton.ac.uk/resources/brapi/brapi.zip");
-
-		File dir = new File("FlapjackUtils.getCacheDir()", "brapi");
-		dir.mkdirs();
-
-		// Download the zip file and extract its contents into a temp folder
-		ZipInputStream zis = new ZipInputStream(new BufferedInputStream(url.openStream()));
-		ZipEntry ze = zis.getNextEntry();
-
-    	while (ze != null)
-		{
-			BufferedOutputStream out = new BufferedOutputStream(
-				new FileOutputStream(new File(dir, ze.getName())));
-			BufferedInputStream in = new BufferedInputStream(zis);
-
-			byte[] b = new byte[4096];
-			for (int n; (n = in.read(b)) != -1;)
-				out.write(b, 0, n);
-
-			out.close();
-			ze = zis.getNextEntry();
-		}
-		zis.closeEntry();
-		zis.close();
-
-
-		// Now read the contents of the XML file
-		JAXBContext jaxbContext = JAXBContext.newInstance(XmlBrapiProvider.class);
-		Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-		File xml = new File(dir, "brapi.xml");
-
-		return (XmlBrapiProvider) jaxbUnmarshaller.unmarshal(xml);
-	}
-	
 	// Use the okhttp client we configured our retrofit service with. This means
 	// the client is configured with any authentication tokens and any custom
 	// certificates that may be required to interact with the current BrAPI
@@ -388,12 +230,6 @@ public class BrapiClient
 
 	public void setMethodID(String methodID)
 	{ this.methodID = methodID;	}
-
-//	public XmlResource getResource()
-//	{ return resource; }
-//
-//	public void setResource(XmlResource resource)
-//	{ this.resource = resource; }
 
 	public String getMapID()
 	{ return mapID; }

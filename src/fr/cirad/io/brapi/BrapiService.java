@@ -1,4 +1,4 @@
-package jhi.flapjack.io.brapi;
+package fr.cirad.io.brapi;
 
 import java.util.*;
 
@@ -14,48 +14,38 @@ import jhi.brapi.api.studies.*;
 import retrofit2.Call;
 import retrofit2.http.*;
 
-public interface BrapiService
-{
-	@GET("calls")
-	Call<BrapiListResource<BrapiCall>> getCalls(@Query("pageSize") String pageSize, @Query("page") String page);
+public interface BrapiService {
+    @GET(value="calls")
+    public Call<BrapiListResource<BrapiCall>> getCalls(@Query(value="pageSize") String var1, @Query(value="page") String var2);
 
-	@FormUrlEncoded
-	@POST("token")
-	Call<BrapiSessionToken> getAuthToken(@Field("grant_type") String grantType, @Field("username") String username, @Field("password") String password, @Field("client_id") String clientId);
+    @FormUrlEncoded
+    @POST(value="token")
+    public Call<BrapiSessionToken> getAuthToken(@Field(value="grant_type") String var1, @Field(value="username") String var2, @Field(value="password") String var3, @Field(value="client_id") String var4);
 
-	@GET("studies-search")
-	Call<BrapiListResource<BrapiStudies>> getStudies(@Query("studyType") String studyType, @Query("pageSize") String pageSize, @Query("page") String page);
+    @GET(value="studies-search")
+    public Call<BrapiListResource<BrapiStudies>> getStudies(@Query(value="studyType") String var1, @Query(value="pageSize") String var2, @Query(value="page") String var3);
 
-	@GET("studies/{id}/germplasm")
-	Call<BrapiListResource<BrapiGermplasm>> getStudyGerplasmDetails(@Path("id") String studyDbId, @Query("pageSize") String pageSize, @Query("page") String page);
-	
-	@GET("maps")
-	Call<BrapiListResource<BrapiGenomeMap>> getMaps(@Query("species") String species, @Query("pageSize") String pageSize, @Query("page") String page);
+    @GET(value="studies/{id}/germplasm")
+    public Call<BrapiListResource<BrapiGermplasm>> getStudyGerplasmDetails(@Path(value="id") String var1, @Query(value="pageSize") String var2, @Query(value="page") String var3);
 
-	@GET("maps/{id}/positions")
-	Call<BrapiListResource<BrapiMarkerPosition>> getMapMarkerData(@Path("id") String id, @Query("pageSize") String pageSize, @Query("page") String page);
+    @GET(value="maps")
+    public Call<BrapiListResource<BrapiGenomeMap>> getMaps(@Query(value="species") String var1, @Query(value="pageSize") String var2, @Query(value="page") String var3);
 
-	@GET("markers")
-	Call<BrapiListResource<BrapiMarker>> getMarkerInfo(@Query("markerDbIds") Set<String> markerDbIds, @Query("name") Set<String> name, @Query("matchMethod") String matchMethod, @Query("include") String include, @Query("type") String type, @Query("pageSize") String pageSize, @Query("page") String page);
+    @GET(value="maps/{id}/positions")
+    public Call<BrapiListResource<BrapiMarkerPosition>> getMapMarkerData(@Path(value="id") String var1, @Query(value="linkageGroupName") Collection<String> var2, @Query(value="pageSize") String var3, @Query(value="page") String var4);
 
-	@FormUrlEncoded
-	@POST("markers")
-	Call<BrapiListResource<BrapiMarker>> getMarkerInfo_byPost(@Field("markerDbIds") Set<String> markerDbIds, @Field("name") Set<String> name, @Field("matchMethod") String matchMethod, @Field("include") String include, @Field("type") String type, @Field("pageSize") String pageSize, @Field("page") String page);
+    @POST(value="markers-search")
+    public Call<BrapiListResource<BrapiMarker>> getMarkerInfo_byPost(@Body Map<String, Object> var1);
 
-	@GET("markerprofiles")
-	Call<BrapiListResource<BrapiMarkerProfile>> getMarkerProfiles(@Query("studyDbId") String studyDbId, @Query("germplasmDbId") Collection<String> germplasmDbIDs, @Query("pageSize") String pageSize, @Query("page") String page);
+    @GET(value="markerprofiles")
+    public Call<BrapiListResource<BrapiMarkerProfile>> getMarkerProfiles(@Query(value="studyDbId") String var1, @Query(value="germplasmDbId") Collection<String> var2, @Query(value="pageSize") String var3, @Query(value="page") String var4);
 
-//	@FormUrlEncoded
-//	@POST(value="allelematrix-search")
-//	Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrixById(@Field(value="matrixDbId") String matrixDbId, @Field("format") String format, @Field("expandHomozygotes") Boolean expandHomozygotes, @Field("unknownString") String unknownString, @Field("sepPhased") String sepPhased, @Field("sepUnphased") String sepUnphased, @Field("pageSize") Integer pageSize, @Field(value="page") Integer page);
-	
-	@GET("allelematrix-search")
-	Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix(@Query("markerprofileDbId") List<String> markerprofileDbIds, @Query("markerDbId") List<String> markerDbIds, @Query("format") String format, @Query("expandHomozygotes") Boolean expandHomozygotes, @Query("unknownString") String unknownString, @Query("sepPhased") String sepPhased, @Query("sepUnphased") String sepUnphased, @Query("pageSize") String pageSize, @Query("page") String page);
+    @GET(value="allelematrix-search")
+    public Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix(@Query(value="markerprofileDbId") List<String> var1, @Query(value="markerDbId") List<String> var2, @Query(value="format") String var3, @Query(value="expandHomozygotes") Boolean var4, @Query(value="unknownString") String var5, @Query(value="sepPhased") String var6, @Query(value="sepUnphased") String var7, @Query(value="pageSize") String var8, @Query(value="page") String var9);
 
-	@FormUrlEncoded
-	@POST("allelematrix-search")
-	Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix_byPost(@Field("markerprofileDbId") List<String> markerprofileDbIds, @Field("markerDbId") List<String> markerDbIds, @Field("format") String format, @Field("expandHomozygotes") Boolean expandHomozygotes, @Field("unknownString") String unknownString, @Field("sepPhased") String sepPhased, @Field("sepUnphased") String sepUnphased, @Field("pageSize") String pageSize, @Field("page") String page);
-	
-	@GET("allelematrix-search/status/{id}")
-	Call<BrapiBaseResource<Object>> getAlleleMatrixStatus(@Path("id") String extractId);
+    @POST(value="allelematrix-search")
+    public Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix_byPost(@Body Map<String, Object> var1);
+
+    @GET(value="allelematrix-search/status/{id}")
+    public Call<BrapiBaseResource<Object>> getAlleleMatrixStatus(@Path(value="id") String var1);
 }
