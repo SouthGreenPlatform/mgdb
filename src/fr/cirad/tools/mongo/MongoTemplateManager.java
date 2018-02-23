@@ -18,8 +18,6 @@
  */
 package fr.cirad.tools.mongo;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBCollection;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -56,6 +54,8 @@ import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.stereotype.Component;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBCollection;
 import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoCredential;
@@ -65,7 +65,6 @@ import com.mongodb.ServerAddress;
 import fr.cirad.tools.AppConfig;
 import fr.cirad.tools.Helper;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class MongoTemplateManager.
  */
@@ -137,8 +136,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
     /**
      * The app config.
      */
-    @Autowired
-    private AppConfig appConfig;
+    @Autowired private AppConfig appConfig;
 
     /**
      * The resource control.
@@ -293,7 +291,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
                 {
                 	if (datasourceInfo.length > 2)
                 		speciesMap.put(cleanKey, datasourceInfo[2]);
-                    templateMap.put(cleanKey, createMongoTemplate(cleanKey, datasourceInfo[0], datasourceInfo[1]));
+                    templateMap.put(cleanKey, createMongoTemplate(datasourceInfo[0], datasourceInfo[1]));
                     if (fPublic) {
                         publicDatabases.add(cleanKey);
                     }
@@ -330,13 +328,12 @@ public class MongoTemplateManager implements ApplicationContextAware {
     /**
      * Creates the mongo template.
      *
-     * @param sModule the module
      * @param sHost the host
      * @param sDbName the db name
      * @return the mongo template
      * @throws Exception the exception
      */
-    static public MongoTemplate createMongoTemplate(String sModule, String sHost, String sDbName) throws Exception {
+    static public MongoTemplate createMongoTemplate(String sHost, String sDbName) throws Exception {
         MongoClient client = mongoClients.get(sHost);
         if (client == null) {
             throw new UnknownHostException("Unknown host: " + sHost);
@@ -407,7 +404,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
 		        {
 		            String sIndexForModule = nRetries == 0 ? "" : ("_" + nRetries);
 		            String sDbName = "mgdb_" + sModule + sIndexForModule + (expiryDate == null ? "" : (EXPIRY_PREFIX + expiryDate));
-		            MongoTemplate mongoTemplate = createMongoTemplate(sModule, sHost, sDbName);
+		            MongoTemplate mongoTemplate = createMongoTemplate(sHost, sDbName);
 		            if (mongoTemplate.getCollectionNames().size() > 0)
 		                nRetries++;	// DB already exists, let's try with a different DB name
 		            else
@@ -489,12 +486,14 @@ public class MongoTemplateManager implements ApplicationContextAware {
     {
         try
         {
-        	saveOrUpdateDataSource(ModuleAction.DELETE, sModule, false, false, null, null, null);	// only this unique synchronized method may write to file safely
-
             String key = sModule.replaceAll("\\*", "");
+        	saveOrUpdateDataSource(ModuleAction.DELETE, key, false, false, null, null, null);	// only this unique synchronized method may write to file safely
+
             if (fAlsoDropDatabase)
                 templateMap.get(key).getDb().dropDatabase();
             templateMap.remove(key);
+            publicDatabases.remove(key);
+            hiddenDatabases.remove(key);
             return true;
         }
         catch (Exception ex)
@@ -620,8 +619,7 @@ public class MongoTemplateManager implements ApplicationContextAware {
      * @return the mongo collection name
      */
     public static String getMongoCollectionName(Class clazz) {
-        Document document = (Document) clazz.getAnnotation(Document.class
-        );
+        Document document = (Document) clazz.getAnnotation(Document.class);
         if (document != null) {
             return document.collection();
         }
@@ -641,5 +639,4 @@ public class MongoTemplateManager implements ApplicationContextAware {
 	public static String getSpecies(String database) {
 		return speciesMap.get(database);
 	}
-
 }
