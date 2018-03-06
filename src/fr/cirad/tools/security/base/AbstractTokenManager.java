@@ -35,6 +35,7 @@ public abstract class AbstractTokenManager {
     static private final Logger LOG = Logger.getLogger(AbstractTokenManager.class);
         
 	static public final String ENTITY_PROJECT = "project";
+	static public final String ENTITY_DATASET = "dataset";
 	static public final String ROLE_READER = "READER";
 
     abstract public String createAndAttachToken(String username, String password) throws IllegalArgumentException, IOException;
