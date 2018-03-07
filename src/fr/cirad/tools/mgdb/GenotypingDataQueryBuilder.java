@@ -16,7 +16,6 @@
  *******************************************************************************/
 package fr.cirad.tools.mgdb;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,10 +27,7 @@ import java.util.List;
 import org.apache.commons.math.util.MathUtils;
 import org.apache.log4j.Logger;
 import org.bson.types.ObjectId;
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.ObjectWriter;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -43,7 +39,6 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 
 import fr.cirad.mgdb.model.mongo.maintypes.GenotypingProject;
-import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData.VariantRunDataId;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleGenotype;
@@ -51,7 +46,6 @@ import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.models.GigwaSearchVariantsRequest;
 import fr.cirad.tools.Helper;
 import fr.cirad.tools.mongo.MongoTemplateManager;
-import jdk.nashorn.internal.parser.JSONParser;
 
 /**
  * The Class GenotypingDataQueryBuilder.
@@ -81,7 +75,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	private String variantEffects;
 	
 	/** The selected individuals. */
-	private List<String>[] selectedIndividuals = new List[2];
+	private List<String>[] selectedIndividuals = new ArrayList[2];
 	
 	/** The operator. */
 	private String[] operator = new String[2];
@@ -434,14 +428,15 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
     		}
 
 	        int nMaxNumberOfAllelesForOneVariant = maxAlleleCount > 0 ? maxAlleleCount : genotypingProject.getAlleleCounts().last(), nPloidy = genotypingProject.getPloidyLevel();
-	        int nNumberOfPossibleGenotypes = (int) (nMaxNumberOfAllelesForOneVariant + MathUtils.factorial(nMaxNumberOfAllelesForOneVariant)/(MathUtils.factorial(nPloidy)*MathUtils.factorial(nMaxNumberOfAllelesForOneVariant-nPloidy)) + (missingData[g] != null && missingData[g] >= 100/selectedIndividuals[g].size() ? 1 : 0));
+	        int nNumberOfPossibleGenotypes = (int) (nMaxNumberOfAllelesForOneVariant + MathUtils.factorial(nMaxNumberOfAllelesForOneVariant)/(MathUtils.factorial(nPloidy)*MathUtils.factorial(nMaxNumberOfAllelesForOneVariant-nPloidy)));
+	        double maxMissingGenotypeCount = selectedIndividuals[g].size() * missingData[g] / 100;
     		if ("$ne".equals(cleanOperator[g]) && !fNegateMatch[g])
             {
-		        if (selectedIndividuals[g].size() > nNumberOfPossibleGenotypes)
+		        if (selectedIndividuals[g].size() - maxMissingGenotypeCount > nNumberOfPossibleGenotypes)
 		        {
 		        	initialMatchList.add(new BasicDBObject("_id", null));	// return no results
 		        	if (nNextCallCount == 1)
-			        	LOG.warn("Aborting 'all different' filter (more individuals than possible genotypes in group " + (g + 1) + ")");
+			        	LOG.info("Aborting 'all different' filter (more called individuals than possible genotypes in group " + (g + 1) + ")");
 		        	return pipeline;
 		        }
             }
@@ -449,19 +444,19 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
     		if (!fGotIndividualsWithMultipleSamples)
 				for (List<Integer> sampleList : individualIndexToSampleListMap[g].values())
 					if (sampleList.size() > 1)
-						{
-							fGotIndividualsWithMultipleSamples = true;
-							break;
-						}
+					{
+						fGotIndividualsWithMultipleSamples = true;
+						break;
+					}
 						
 			fCompareBetweenGenotypes[g] = cleanOperator[g] != null && !fZygosityRegex[g] && !fIsWithoutAbnormalHeterozygosityQuery[g];
 	        if ("$ne".equals(cleanOperator[g]) && fNegateMatch[g])
 	        {
-		        if (selectedIndividuals[g].size() > nNumberOfPossibleGenotypes)
+		        if (selectedIndividuals[g].size() - maxMissingGenotypeCount > nNumberOfPossibleGenotypes)
 		        {
 		        	fCompareBetweenGenotypes[g] = false;	// we know applying this filter would not affect the query
 		        	if (nNextCallCount == 1)
-			        	LOG.warn("Ignoring 'not all different' filter on group 1 (more individuals than possible genotypes)");
+			        	LOG.info("Ignoring 'not all different' filter on group 1 (more called individuals than possible genotypes in group " + (g + 1) + ")");
 		        }
 	        }
 	        
@@ -471,8 +466,8 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
         
 		DBObject groupFields = new BasicDBObject("_id", "$_id." + VariantRunDataId.FIELDNAME_VARIANT_ID); // group multi-run records by variant id
         DBObject project = new BasicDBObject();
-        BasicDBObject addFieldsVars = new BasicDBObject();	// use for handling "all same" filter
-        BasicDBObject addFieldsIn = new BasicDBObject();	// use for handling "all same" filter
+        BasicDBObject addFieldsVars = new BasicDBObject();	// used for handling "all same" filter
+        BasicDBObject addFieldsIn = new BasicDBObject();	// used for handling "all same" filter
     	BasicDBObject vars = new BasicDBObject();
     	BasicDBObject in = new BasicDBObject();
         BasicDBObject subIn = new BasicDBObject();
