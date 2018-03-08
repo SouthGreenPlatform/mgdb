@@ -32,6 +32,7 @@ import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 
 import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -123,7 +124,7 @@ public class VcfImport extends AbstractGenotypeImport {
         } catch (Exception e) {
             LOG.warn("Unable to parse input mode. Using default (0): overwrite run if exists.");
         }
-        new VcfImport().importToMongo(args[4].toLowerCase().endsWith(".bcf"), args[0], args[1], args[2], args[3], args[4], mode);        
+        new VcfImport().importToMongo(args[4].toLowerCase().endsWith(".bcf"), args[0], args[1], args[2], args[3], new File(args[4]).toURI().toURL(), mode);        
     }
 
     /**
@@ -134,12 +135,12 @@ public class VcfImport extends AbstractGenotypeImport {
      * @param sProject the project
      * @param sRun the run
      * @param sTechnology the technology
-     * @param mainFilePath the main file path
+     * @param mainFileUrl the main file URL
      * @param importMode the import mode
      * @return a project ID if it was created by this method, otherwise null
      * @throws Exception the exception
      */
-    public Integer importToMongo(boolean fIsBCF, String sModule, String sProject, String sRun, String sTechnology, String mainFilePath, int importMode) throws Exception {
+    public Integer importToMongo(boolean fIsBCF, String sModule, String sProject, String sRun, String sTechnology, URL mainFileUrl, int importMode) throws Exception {
         long before = System.currentTimeMillis();
         ProgressIndicator progress = ProgressIndicator.get(m_processID);
         if (progress == null)
@@ -150,10 +151,10 @@ public class VcfImport extends AbstractGenotypeImport {
 
         if (fIsBCF) {
             BCF2Codec bc = new BCF2Codec();
-            reader = AbstractFeatureReader.getFeatureReader(mainFilePath, bc, false);
+            reader = AbstractFeatureReader.getFeatureReader(mainFileUrl.toString(), bc, false);
         } else {
             VCFCodec vc = new VCFCodec();
-            reader = AbstractFeatureReader.getFeatureReader(mainFilePath, vc, false);
+            reader = AbstractFeatureReader.getFeatureReader(mainFileUrl.toString(), vc, false);
         }
         // not compatible java 1.8 ? 
         // FeatureReader<VariantContext> reader = AbstractFeatureReader.getFeatureReader(mainFilePath, fIsBCF ? new BCF2Codec() : new VCFCodec(), false);
@@ -584,10 +585,12 @@ public class VcfImport extends AbstractGenotypeImport {
             Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
             for (String sAttrName : extendedAttributes.keySet()) {
             	VCFFormatHeaderLine formatHeaderLine = header.getFormatHeaderLine(sAttrName);
-            	boolean fConvertToNumber = (formatHeaderLine.getType().equals(VCFHeaderLineType.Integer) || formatHeaderLine.getType().equals(VCFHeaderLineType.Float)) && formatHeaderLine.isFixedCount() && formatHeaderLine.getCount() == 1;
-            	boolean fConvertToNumberWithDecimals = fConvertToNumber && formatHeaderLine.getType().equals(VCFHeaderLineType.Float);
-            	String value = extendedAttributes.get(sAttrName).toString();
-                aGT.getAdditionalInfo().put(sAttrName, fConvertToNumber ? (fConvertToNumberWithDecimals ? Float.parseFloat(value) : Integer.parseInt(value)) : value);
+            	if (formatHeaderLine != null) {
+	            	boolean fConvertToNumber = (formatHeaderLine.getType().equals(VCFHeaderLineType.Integer) || formatHeaderLine.getType().equals(VCFHeaderLineType.Float)) && formatHeaderLine.isFixedCount() && formatHeaderLine.getCount() == 1;
+	            	boolean fConvertToNumberWithDecimals = fConvertToNumber && formatHeaderLine.getType().equals(VCFHeaderLineType.Float);
+	            	String value = extendedAttributes.get(sAttrName).toString();
+	                aGT.getAdditionalInfo().put(sAttrName, fConvertToNumber ? (fConvertToNumberWithDecimals ? Float.parseFloat(value) : Integer.parseInt(value)) : value);
+            	}
             }
 
             if (genotype.isFiltered()) {

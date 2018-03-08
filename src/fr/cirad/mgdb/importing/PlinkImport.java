@@ -16,12 +16,11 @@
  *******************************************************************************/
 package fr.cirad.mgdb.importing;
 
-import htsjdk.variant.variantcontext.VariantContext.Type;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,19 +46,20 @@ import fr.cirad.mgdb.importing.base.AbstractGenotypeImport;
 import fr.cirad.mgdb.model.mongo.maintypes.AutoIncrementCounter;
 import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader;
 import fr.cirad.mgdb.model.mongo.maintypes.DBVCFHeader.VcfHeaderId;
-import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData.VariantRunDataId;
 import fr.cirad.mgdb.model.mongo.maintypes.GenotypingProject;
 import fr.cirad.mgdb.model.mongo.maintypes.Individual;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantData;
 import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData;
-import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
+import fr.cirad.mgdb.model.mongo.maintypes.VariantRunData.VariantRunDataId;
 import fr.cirad.mgdb.model.mongo.subtypes.GenotypingSample;
+import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleGenotype;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.mgdb.model.mongodao.MgdbDao;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.genotypes.PlinkEigenstratTool;
 import fr.cirad.tools.mongo.MongoTemplateManager;
+import htsjdk.variant.variantcontext.VariantContext.Type;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -120,7 +120,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 		{
 			LOG.warn("Unable to parse input mode. Using default (0): overwrite run if exists.");
 		}
-		new PlinkImport().importToMongo(args[0], args[1], args[2], args[3], args[4], args[5], mode);
+		new PlinkImport().importToMongo(args[0], args[1], args[2], args[3], new File(args[4]).toURI().toURL(), new File(args[5]), mode);
 	}
 
 	/**
@@ -130,13 +130,13 @@ public class PlinkImport extends AbstractGenotypeImport {
 	 * @param sProject the project
 	 * @param sRun the run
 	 * @param sTechnology the technology
-	 * @param mapFilePath the map file path
-	 * @param pedFilePath the ped file path
+	 * @param mapFileURL the map file URL
+	 * @param pedFile the ped file
 	 * @param importMode the import mode
 	 * @return a project ID if it was created by this method, otherwise null
 	 * @throws Exception the exception
 	 */
-	public Integer importToMongo(String sModule, String sProject, String sRun, String sTechnology, String mapFilePath, String pedFilePath, int importMode) throws Exception
+	public Integer importToMongo(String sModule, String sProject, String sRun, String sTechnology, URL mapFileURL, File pedFile, int importMode) throws Exception
 	{
 		long before = System.currentTimeMillis();
         ProgressIndicator progress = ProgressIndicator.get(m_processID);
@@ -232,7 +232,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 			LOG.info(info);
 			progress.addStep(info);
 			progress.moveToNextStep();
-			LinkedHashMap<String, String> variantsAndPositions = PlinkEigenstratTool.getVariantsAndPositionsFromPlinkMapFile(new File(mapFilePath), redundantVariantIndexes, "\t");
+			LinkedHashMap<String, String> variantsAndPositions = PlinkEigenstratTool.getVariantsAndPositionsFromPlinkMapFile(mapFileURL, redundantVariantIndexes, "\t");
 			String[] variants = variantsAndPositions.keySet().toArray(new String[variantsAndPositions.size()]);
 			
 			info = "Checking genotype consistency";
@@ -250,7 +250,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 			progress.addStep(info);
 			progress.moveToNextStep();	
 			HashMap<String, String> userIndividualToPopulationMapToFill = new LinkedHashMap<>();
-			File[] tempFiles = rotatePlinkPedFile(variants, pedFilePath, userIndividualToPopulationMapToFill);
+			File[] tempFiles = rotatePlinkPedFile(variants, pedFile, userIndividualToPopulationMapToFill);
 			long count = importTempFileContents(progress, mongoTemplate, tempFiles, variantsAndPositions, existingVariantIDs, project, sRun, inconsistencies, userIndividualToPopulationMapToFill);
 
 			LOG.info("Import took " + (System.currentTimeMillis() - before) / 1000 + "s for " + count + " records");
@@ -268,8 +268,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 		}
 	}
 
-	public long importTempFileContents(ProgressIndicator progress, MongoTemplate mongoTemplate, File[] tempFiles, LinkedHashMap<String, String> variantsAndPositions, HashMap<String, Comparable> existingVariantIDs,
-			GenotypingProject project, String sRun, HashMap<Comparable, ArrayList<String>> inconsistencies, Map<String, String> userIndividualToPopulationMap) throws Exception			
+	public long importTempFileContents(ProgressIndicator progress, MongoTemplate mongoTemplate, File[] tempFiles, LinkedHashMap<String, String> variantsAndPositions, HashMap<String, Comparable> existingVariantIDs, GenotypingProject project, String sRun, HashMap<Comparable, ArrayList<String>> inconsistencies, Map<String, String> userIndividualToPopulationMap) throws Exception			
 	{
 		String[] individuals = userIndividualToPopulationMap.keySet().toArray(new String[userIndividualToPopulationMap.size()]);
 		ArrayList<VariantData> unsavedVariants = new ArrayList<VariantData>();
@@ -438,10 +437,9 @@ public class PlinkImport extends AbstractGenotypeImport {
 		return count;
 	}
 
-	private File[] rotatePlinkPedFile(String[] variants, String pedFilePath, Map<String, String> userIndividualToPopulationMapToFill) throws IOException, WrongNumberArgsException
+	private File[] rotatePlinkPedFile(String[] variants, File pedFile, Map<String, String> userIndividualToPopulationMapToFill) throws IOException, WrongNumberArgsException
 	{
 		long before = System.currentTimeMillis();
-		File pedFile = new File(pedFilePath);
 		Runtime rt = Runtime.getRuntime();
 		
 		StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();

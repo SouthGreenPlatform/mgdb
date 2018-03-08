@@ -21,6 +21,7 @@ import htsjdk.tribble.FeatureReader;
 import htsjdk.variant.variantcontext.VariantContext.Type;
 
 import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -108,7 +109,7 @@ public class HapMapImport extends AbstractGenotypeImport {
 		{
 			LOG.warn("Unable to parse input mode. Using default (0): overwrite run if exists.");
 		}
-		new HapMapImport().importToMongo(args[0], args[1], args[2], args[3], args[4], mode);
+		new HapMapImport().importToMongo(args[0], args[1], args[2], args[3], new File(args[4]).toURI().toURL(), mode);
 	}
 
 	/**
@@ -118,12 +119,12 @@ public class HapMapImport extends AbstractGenotypeImport {
 	 * @param sProject the project
 	 * @param sRun the run
 	 * @param sTechnology the technology
-	 * @param mainFilePath the main file path
+	 * @param mainFileUrl the main file URL
 	 * @param importMode the import mode
 	 * @return a project ID if it was created by this method, otherwise null
 	 * @throws Exception the exception
 	 */
-	public Integer importToMongo(String sModule, String sProject, String sRun, String sTechnology, String mainFilePath, int importMode) throws Exception
+	public Integer importToMongo(String sModule, String sProject, String sRun, String sTechnology, URL mainFileUrl, int importMode) throws Exception
 	{
 		long before = System.currentTimeMillis();
         ProgressIndicator progress = ProgressIndicator.get(m_processID);
@@ -131,7 +132,7 @@ public class HapMapImport extends AbstractGenotypeImport {
             progress = new ProgressIndicator(m_processID, new String[]{"Initializing import"});	// better to add it straight-away so the JSP doesn't get null in return when it checks for it (otherwise it will assume the process has ended)
 		progress.setPercentageEnabled(false);		
 
-		FeatureReader<RawHapMapFeature> reader = AbstractFeatureReader.getFeatureReader(mainFilePath, new RawHapMapCodec(), false);
+		FeatureReader<RawHapMapFeature> reader = AbstractFeatureReader.getFeatureReader(mainFileUrl.toString(), new RawHapMapCodec(), false);
 		GenericXmlApplicationContext ctx = null;
 		try
 		{
