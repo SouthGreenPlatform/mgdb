@@ -296,11 +296,6 @@ public class PlinkImport extends AbstractGenotypeImport {
 				{
 					StringTokenizer variantFields = new StringTokenizer(scanner.nextLine(), "\t");
 					String providedVariantId = variantFields.nextToken();
-					if (providedVariantId.toString().startsWith("*"))
-					{
-						System.err.print("\r\nSkipping deprecated variant data: " + providedVariantId);
-						continue;
-					}
 
 					String[] seqAndPos = variantsAndPositions.get(providedVariantId).split("\t");
 					String sequence = seqAndPos[0];
@@ -311,7 +306,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 					}
 					catch (NumberFormatException nfe)
 					{
-						LOG.warn("Unable to read position for variant " + providedVariantId, nfe);
+						LOG.warn("Unable to read position for variant " + providedVariantId + " - " + nfe.getMessage());
 					}
 					if ("0".equals(sequence) || 0 == bpPosition)
 					{
@@ -325,13 +320,16 @@ public class PlinkImport extends AbstractGenotypeImport {
 						if (variantId != null)
 							break;
 					}
-					
-					if (variantId == null && !fImportUnknownVariants)
+
+					if (variantId == null)
 					{
-//						if (fImportUnknownVariants)
-//							LOG.warn("Import of unknown variant (" + providedVariantId + ") not yet implemented");
-//						else
+						if (!fImportUnknownVariants)
 							LOG.warn("Skipping unknown variant: " + providedVariantId);
+					}
+					else if (variantId.toString().startsWith("*"))
+					{
+						System.err.print("\r\nSkipping deprecated variant data: " + providedVariantId);
+						continue;
 					}
 					else
 					{
@@ -470,7 +468,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 					Scanner sc = new Scanner(pedFile);
 					while (sc.hasNextLine())
 					{
-						String sLine = sc.nextLine();
+						String sLine = sc.nextLine().trim().replaceAll(" +", " ");
 						if (nCurrentChunkIndex == 0)
 							PlinkEigenstratTool.readIndividualFromPlinkPedLine(sLine, (HashMap<String, String>) userIndividualToPopulationMapToFill);	// important because it fills the map
 						int nFirstPosToRead = sLine.length() - 4*(variants.length - nCurrentChunkIndex * nMaxMarkersReadAtOnce);
