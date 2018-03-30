@@ -1,6 +1,6 @@
 /**
- * ***********************************************************************
- * GIGWA - Genotype Investigator for Genome Wide Analyses
+ * *****************************************************************************
+ * MGDB - Mongo Genotype DataBase
  * Copyright (C) 2016 <CIRAD>
  *
  * This program is free software: you can redistribute it and/or modify it under
@@ -14,7 +14,7 @@
  *
  * See <http://www.gnu.org/licenses/agpl.html> for details about GNU Affero
  * General Public License V3.
- * ***********************************************************************
+ * *****************************************************************************
  */
 package fr.cirad.tools.security.base;
 
