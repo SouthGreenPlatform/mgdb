@@ -23,12 +23,11 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class Sequence.
  */
-@Document(collection = "contigSeqs")
-@TypeAlias("CSQ")
+@Document(collection = "sequences")
+@TypeAlias("SQ")
 public class Sequence {
 
     /**

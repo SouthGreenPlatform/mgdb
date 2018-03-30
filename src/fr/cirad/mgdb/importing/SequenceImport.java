@@ -54,92 +54,12 @@ import java.util.zip.GZIPInputStream;
 public class SequenceImport {
 
     /**
-     * Download a fasta reference file from an url and unzip it ex :
-     * "ftp://ftp.ensembl.org/pub/release-84/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.22.fa.gz"
-     *
-     * @param urlPath
-     * @return
-     */
-    public static File getFastaFileFromURL(String urlPath) {
-        File file = null;
-        InputStream input;
-        FileOutputStream writeFile;
-
-        try {
-
-            URL url = new URL(urlPath);
-            URLConnection connection = url.openConnection();
-
-            input = connection.getInputStream();
-
-            String fileName = url.getFile().substring(url.getFile().lastIndexOf('/') + 1);
-
-            // download and decompress if it's a gz file 
-            if (fileName.substring(fileName.length() - 2, fileName.length()).equals("gz")) {
-                fileName = fileName.substring(0, fileName.length() - 3);
-
-                // OS independant filePath? 
-                String basePath = System.getProperty("user.home");
-                writeFile = new FileOutputStream(basePath + "/" + fileName);
-
-                GZIPInputStream gis = new GZIPInputStream(input);
-
-                byte[] buffer = new byte[1024];
-                int read;
-
-                while ((read = gis.read(buffer)) > 0) {
-                    writeFile.write(buffer, 0, read);
-                }
-                writeFile.flush();
-                writeFile.close();
-                input.close();
-                gis.close();
-
-                file = new File(basePath + "/" + fileName);
-            } else {
-                LOG.warn("Unsupported media type: support only .gz file for the moment");
-            }
-
-        } catch (Exception ex) {
-
-            LOG.warn("Failed : " + ex);
-        } finally {
-
-        }
-        return file;
-    }
-
-    /**
-     * get checksum and sequence length from a fasta file
-     *
-     * @param file
-     * @param headerList
-     * @return Map<String, String> with
-     * @throws java.io.FileNotFoundException
-     * @throws java.security.NoSuchAlgorithmException
-     */
-    public static Map<String, String> getSeqInfo(File file, List<String> headerList) throws FileNotFoundException, IOException, NoSuchAlgorithmException {
-
-        InputStream is;
-        Map<String, String> seqInfo = new LinkedHashMap<>();
-        is = new BufferedInputStream(new FileInputStream(file));
-
-        while (getMD5andLength(seqInfo, is, headerList)) {
-            // each iteration, a sequence is computed
-        }
-        is.close();
-
-        return seqInfo;
-    }
-
-    /**
      * compute md5 and length for a sequence
      *
      * @param seqInfo
      * @param is
      * @param headerList
-     * @return the following char (-1 if end of file or '>' if there is another
-     * sequence)
+     * @return the following char (-1 if end of file or '>' if there is another sequence)
      * @throws java.io.IOException
      * @throws java.security.NoSuchAlgorithmException
      */
@@ -191,14 +111,19 @@ public class SequenceImport {
 
             goOn = c != -1; // true if c ='>'
 
-        } catch (IOException | NoSuchAlgorithmException ex) {
+        }
+        catch (IOException | NoSuchAlgorithmException ex)
+        {
             ex.printStackTrace();
             throw ex;
-        } finally {
+        }
+        finally
+        {
             byte[] hash = dis.getMessageDigest().digest();
             seqInfo.put(Helper.bytesToHex(hash), Integer.toString(total));
+        	if (!goOn && dis != null)
+        		dis.close();
         }
-
         return goOn;
     }
 
@@ -207,40 +132,43 @@ public class SequenceImport {
      */
     private static final Logger LOG = Logger.getLogger(SequenceImport.class);
 
-    public static void importSeq(MongoTemplate mongoTemplate, String[] args, String seqCollName) throws Exception {
+    public static void importSeq(MongoTemplate mongoTemplate, String[] args, String seqCollName) throws Exception
+    {
+        String lcFile = args[1].toLowerCase();
+        InputStream is;
+        if (lcFile.startsWith("ftp://") | lcFile.startsWith("http://"))
+        	is = new URL(args[1]).openStream();	// import from an URL
+        else
+            is = new BufferedInputStream(new FileInputStream(args[1]));	// import from a local file
 
-        List<String> listHeader = new ArrayList<>();
-        Map<String, String> seqInfo;
-
-        String fileName = args[1];
-
-        if (fileName.substring(0, 3).equals("ftp") | fileName.substring(0, 4).equals("http")) {
-
-            // import from an URL 
-            File file = SequenceImport.getFastaFileFromURL(fileName);
-            seqInfo = SequenceImport.getSeqInfo(file, listHeader);
-        } else {
-            // import from a local file 
-            seqInfo = SequenceImport.getSeqInfo(new File(fileName), listHeader);
-        }
+	    if (lcFile.endsWith(".gz"))
+	    	is = new GZIPInputStream(is);
+	    
+        List<String> headerList = new ArrayList<>();
+        Map<String, String> seqInfo = new LinkedHashMap<>();
+        while (getMD5andLength(seqInfo, is, headerList))
+        	; // at each iteration, a sequence is processed
+        is.close();
 
         LOG.info("Importing fasta file");
         int rowIndex = 0;
 
         for (Entry<String, String> entry : seqInfo.entrySet()) {
-
-            String sequenceId = listHeader.get(rowIndex);
+            String sequenceId = headerList.get(rowIndex);
             // sequenceId looks like :  "10 dna:chromosome chromosome:GRCh38:10:1:133797422:1 REF"
             // sequence name is 10 in this example
-            String name = sequenceId.split("\\s+")[0].replace(">", ""); // split on whitespace and delete '>' 
+            String name = sequenceId.trim();
+            if (name.startsWith(">"))
+            	name = name.substring(1);
+            name = name.trim().split("\\s+")[0];
 
             String checksum = entry.getKey();
             String length = entry.getValue();
             // do not store the sequence since we don't need it ? 
-            mongoTemplate.save(new Sequence(name, "", Long.valueOf(length), checksum, fileName), seqCollName);
-            LOG.info(length + " records added to collection " + seqCollName);
+            mongoTemplate.save(new Sequence(name, null, Long.valueOf(length), checksum, args[1]), seqCollName);
             rowIndex++;
         }
+        LOG.info(rowIndex + " records added to collection " + seqCollName);
     }
 
     /**
