@@ -16,6 +16,7 @@
  *******************************************************************************/
 package fr.cirad.mgdb.model.mongo.maintypes;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Set;
 
@@ -37,6 +38,9 @@ public class Individual implements Comparable<Individual>
 	
 	/** The Constant FIELDNAME_PROBLEM. */
 	public final static String FIELDNAME_PROBLEM = "pb";
+	
+	/** The Constant SECTION_ADDITIONAL_INFO. */
+	public final static String SECTION_ADDITIONAL_INFO = "ai";
 
 	/** The id. */
 	@Id
@@ -49,6 +53,10 @@ public class Individual implements Comparable<Individual>
 	/** The problems. */
 	@Field(FIELDNAME_PROBLEM)
 	private LinkedHashMap<Integer /*project id*/, String /*problem description*/> problems;
+	
+	/** The additional info. */
+	@Field(SECTION_ADDITIONAL_INFO)
+	private HashMap<String, Comparable> additionalInfo = null;
 	
 	/**
 	 * Instantiates a new individual.
@@ -156,6 +164,26 @@ public class Individual implements Comparable<Individual>
 	 */
 	public String getProblem(int projId) {
 		return getProblems().get(projId);
+	}
+	
+	/**
+	 * Gets the additional info.
+	 *
+	 * @return the additional info
+	 */
+	public HashMap<String, Comparable> getAdditionalInfo() {
+		if (additionalInfo == null)
+			additionalInfo = new HashMap<String, Comparable>();
+		return additionalInfo;
+	}
+
+	/**
+	 * Sets the additional info.
+	 *
+	 * @param additionalInfo the additional info
+	 */
+	public void setAdditionalInfo(HashMap<String, Comparable> additionalInfo) {
+		this.additionalInfo = additionalInfo;
 	}
 	
 	/* (non-Javadoc)
