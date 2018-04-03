@@ -32,6 +32,7 @@ import java.util.Scanner;
 import java.util.StringTokenizer;
 
 import org.apache.log4j.Logger;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.BeanDefinitionStoreException;
 import org.springframework.context.support.GenericXmlApplicationContext;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -321,25 +322,18 @@ public class PlinkImport extends AbstractGenotypeImport {
 							break;
 					}
 
-					if (variantId == null)
+					if (variantId == null && !fImportUnknownVariants)
+						LOG.warn("Skipping unknown variant: " + providedVariantId);
+					else if (variantId != null && variantId.toString().startsWith("*"))
 					{
-						if (!fImportUnknownVariants)
-							LOG.warn("Skipping unknown variant: " + providedVariantId);
-					}
-					else if (variantId.toString().startsWith("*"))
-					{
-						System.err.print("\r\nSkipping deprecated variant data: " + providedVariantId);
+						LOG.warn("\r\nSkipping deprecated variant data: " + providedVariantId);
 						continue;
 					}
 					else
 					{
 						VariantData variant = mongoTemplate.findById(variantId == null ? providedVariantId : variantId, VariantData.class);							
 						if (variant == null)
-							variant = new VariantData(providedVariantId);
-						if (!unsavedVariants.contains(variant))
-							unsavedVariants.add(variant);
-//						else
-//							System.out.println(providedVariantId);
+							variant = new VariantData(providedVariantId instanceof String && ObjectId.isValid((String)providedVariantId) ? new ObjectId((String) providedVariantId) : providedVariantId);
 
 						String[][] alleles = new String[2][individuals.length];
 						int nIndividualIndex = 0;
@@ -356,9 +350,22 @@ public class PlinkImport extends AbstractGenotypeImport {
 						}
 
 						VariantRunData runToSave = addPlinkDataToVariant(mongoTemplate, variant, sequence, bpPosition, userIndividualToPopulationMap, alleles, project, sRun, previouslyCreatedSamples, fImportUnknownVariants);
-						if (!unsavedRuns.contains(runToSave))
-							unsavedRuns.add(runToSave);
 						
+						if (variant.getReferencePosition() != null && !project.getSequences().contains(variant.getReferencePosition().getSequence()))
+							project.getSequences().add(variant.getReferencePosition().getSequence());
+
+						project.getAlleleCounts().add(variant.getKnownAlleleList().size());	// it's a TreeSet so it will only be added if it's not already present
+						if (variant.getKnownAlleleList().size() > 2)
+							LOG.warn("Variant " + variant.getId() + " (" + providedVariantId + ") has more than 2 alleles!");
+						
+						if (variant.getKnownAlleleList().size() > 0)
+						{	// we only import data related to a variant if we know its alleles
+							if (!unsavedVariants.contains(variant))
+								unsavedVariants.add(variant);
+							if (!unsavedRuns.contains(runToSave))
+								unsavedRuns.add(runToSave);
+						}
+					
 						if (count == 0)
 						{
 							nNumberOfVariantsToSaveAtOnce = Math.max(1, 30000 / individuals.length);
@@ -393,13 +400,6 @@ public class PlinkImport extends AbstractGenotypeImport {
 								nPreviousProgressPercentage = nProgressPercentage;
 							}
 						}
-
-						if (variant.getReferencePosition() != null && !project.getSequences().contains(variant.getReferencePosition().getSequence()))
-							project.getSequences().add(variant.getReferencePosition().getSequence());
-
-						project.getAlleleCounts().add(variant.getKnownAlleleList().size());	// it's a TreeSet so it will only be added if it's not already present
-						if (variant.getKnownAlleleList().size() > 2)
-							LOG.warn("Variant " + variant.getId() + " (" + providedVariantId + ") has more than 2 alleles!");
 					}
 					count++;
 				}
@@ -422,7 +422,6 @@ public class PlinkImport extends AbstractGenotypeImport {
 				if (!project.getRuns().contains(sRun))
 					project.getRuns().add(sRun);
 				mongoTemplate.save(project);
-
 			}
 		}
 		finally
