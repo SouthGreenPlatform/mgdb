@@ -34,6 +34,10 @@ public interface BrapiService {
     @GET(value="maps/{id}/positions")
     public Call<BrapiListResource<BrapiMarkerPosition>> getMapMarkerData(@Path(value="id") String var1, @Query(value="linkageGroupName") Collection<String> var2, @Query(value="pageSize") String var3, @Query(value="page") String var4);
 
+	@GET("markers")
+	public Call<BrapiListResource<BrapiMarker>> getMarkerInfo_v1_0(@Query("markerDbIds") Set<String> markerDbIds, @Query("name") Set<String> name, @Query("matchMethod") String matchMethod, @Query("include") String include, @Query("type") String type, @Query("pageSize") String pageSize, @Query("page") String page);
+	@GET("markers-search")
+	public Call<BrapiListResource<BrapiMarker>> getMarkerInfo(@Query("markerDbIds") Set<String> markerDbIds, @Query("name") Set<String> name, @Query("matchMethod") String matchMethod, @Query("include") String include, @Query("type") String type, @Query("pageSize") String pageSize, @Query("page") String page);
     @POST(value="markers-search")
     public Call<BrapiListResource<BrapiMarker>> getMarkerInfo_byPost(@Body Map<String, Object> var1);
 
@@ -42,7 +46,6 @@ public interface BrapiService {
 
     @GET(value="allelematrix-search")
     public Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix(@Query(value="markerprofileDbId") List<String> var1, @Query(value="markerDbId") List<String> var2, @Query(value="format") String var3, @Query(value="expandHomozygotes") Boolean var4, @Query(value="unknownString") String var5, @Query(value="sepPhased") String var6, @Query(value="sepUnphased") String var7, @Query(value="pageSize") String var8, @Query(value="page") String var9);
-
     @POST(value="allelematrix-search")
     public Call<BrapiBaseResource<BrapiAlleleMatrix>> getAlleleMatrix_byPost(@Body Map<String, Object> var1);
 

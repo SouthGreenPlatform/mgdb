@@ -28,7 +28,7 @@ public class CallsUtils
 			return false;
 		if (hasCall("maps", JSON, GET) == false)
 			return false;
-		if (hasCall("maps/id/positions", JSON, GET) == false)
+		if (hasCall("maps/{mapDbId}/positions", JSON, GET) == false)
 			return false;
 		if (hasCall("markerprofiles", JSON, GET) == false)
 			return false;
@@ -50,6 +50,21 @@ public class CallsUtils
 	boolean hasToken()
 	{
 		return hasCall("token", JSON, GET);
+	}
+
+	boolean hasPostMarkersSearch()
+	{
+		return hasCall("markers-search", JSON, POST);
+	}
+
+	boolean hasGetMarkersSearch()
+	{
+		return hasCall("markers-search", JSON, GET);
+	}
+	
+	boolean hasV1_0MarkersSearch()
+	{
+		return hasCall("markers", JSON, GET);
 	}
 
 	boolean hasMapsMapDbId()

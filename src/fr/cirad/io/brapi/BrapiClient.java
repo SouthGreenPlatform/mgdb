@@ -56,12 +56,6 @@ public class BrapiClient
 	{
 		baseURL = baseURL.endsWith("/") ? baseURL : baseURL + "/";
 
-		// Tweak to make the timeout on Retrofit connections last longer
-//		httpClient = new OkHttpClient.Builder()
-//			.readTimeout(60, TimeUnit.SECONDS)
-//			.connectTimeout(60, TimeUnit.SECONDS)
-//			.build();
-
 		httpClient = getUnsafeOkHttpClient();
 		 
 		Retrofit retrofit = new Retrofit.Builder()
@@ -73,8 +67,12 @@ public class BrapiClient
 		service = retrofit.create(BrapiService.class);
 	}
 	
-	public static OkHttpClient getUnsafeOkHttpClient() {
-        try {
+	public static OkHttpClient getUnsafeOkHttpClient()
+	{
+        try
+        {
+            OkHttpClient.Builder builder = new OkHttpClient.Builder();
+
             // Create a trust manager that does not validate certificate chains
             final TrustManager[] trustAllCerts = new TrustManager[] {
                     new X509TrustManager() {
@@ -92,7 +90,7 @@ public class BrapiClient
                         }
                     }
             };
-
+            
             // Install the all-trusting trust manager
             final SSLContext sslContext = SSLContext.getInstance("SSL");
             sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
@@ -100,7 +98,6 @@ public class BrapiClient
             // Create an ssl socket factory with our all-trusting manager
             final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
 
-            OkHttpClient.Builder builder = new OkHttpClient.Builder();
             builder.sslSocketFactory(sslSocketFactory, (X509TrustManager)trustAllCerts[0]);
             builder.hostnameVerifier(new HostnameVerifier() {
                 @Override
@@ -125,7 +122,7 @@ public class BrapiClient
                     return chain.proceed(request);
                 }
             })
-            .readTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)	// Tweak to make the timeout on Retrofit connections last longer
             .connectTimeout(60, TimeUnit.SECONDS)
             .build();
             
@@ -135,11 +132,11 @@ public class BrapiClient
         }
     }
 
-	private String enc(String str)
-	{
-		try { return URLEncoder.encode(str, "UTF-8"); }
-		catch (UnsupportedEncodingException e) { return str; }
-	}
+//	private String enc(String str)
+//	{
+//		try { return URLEncoder.encode(str, "UTF-8"); }
+//		catch (UnsupportedEncodingException e) { return str; }
+//	}
 
 	public void getCalls()
 		throws Exception
@@ -165,13 +162,22 @@ public class BrapiClient
 	}
 
 	public boolean hasToken()
-		{ return callsUtils.hasToken(); }
+	{ return callsUtils.hasToken(); }
 
 	public boolean hasAlleleMatrixSearchTSV()
-		{ return callsUtils.hasAlleleMatrixSearchTSV(); }
+	{ return callsUtils.hasAlleleMatrixSearchTSV(); }
 
 	public boolean hasMapsMapDbId()
-		{ return callsUtils.hasMapsMapDbId(); }
+	{ return callsUtils.hasMapsMapDbId(); }
+	
+	public boolean hasPostMarkersSearch()
+	{ return callsUtils.hasPostMarkersSearch(); }
+
+	public boolean hasGetMarkersSearch()
+	{ return callsUtils.hasGetMarkersSearch(); }
+	
+	public boolean hasV1_0MarkersSearch()
+	{ return callsUtils.hasV1_0MarkersSearch(); }
 
 	public BrapiService getService() {
 		return service;
