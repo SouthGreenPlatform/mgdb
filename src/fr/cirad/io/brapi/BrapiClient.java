@@ -40,7 +40,7 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
 
 public class BrapiClient
 {
-	private static final Logger LOG = Logger.getLogger(VariantData.class);
+	private static final Logger LOG = Logger.getLogger(BrapiClient.class);
 
 	private BrapiService service;
 
