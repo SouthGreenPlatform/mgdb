@@ -62,15 +62,16 @@ public class CallsUtils
 		return hasCall("markers-search", JSON, GET);
 	}
 	
-	boolean hasV1_0MarkersSearch()
+	boolean hasMarkersDetails()
 	{
+		/* FIXME: this should be "markers/{id}", now as such to remain compatible with https://ics.hutton.ac.uk/germinate-demo/cactuar-devel/brapi/v1 */
 		return hasCall("markers", JSON, GET);
 	}
 
-	boolean hasMapsMapDbId()
-	{
-		return hasCall("maps/id", JSON, GET);
-	}
+//	boolean hasMapsMapDbId()
+//	{
+//		return hasCall("maps/id", JSON, GET);
+//	}
 
 	boolean hasAlleleMatrixSearchTSV()
 	{

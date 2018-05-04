@@ -34,8 +34,11 @@ public interface BrapiService {
     @GET(value="maps/{id}/positions")
     public Call<BrapiListResource<BrapiMarkerPosition>> getMapMarkerData(@Path(value="id") String var1, @Query(value="linkageGroupName") Collection<String> var2, @Query(value="pageSize") String var3, @Query(value="page") String var4);
 
-	@GET("markers")
-	public Call<BrapiListResource<BrapiMarker>> getMarkerInfo_v1_0(@Query("markerDbIds") Set<String> markerDbIds, @Query("name") Set<String> name, @Query("matchMethod") String matchMethod, @Query("include") String include, @Query("type") String type, @Query("pageSize") String pageSize, @Query("page") String page);
+	@GET("markers")	// this is wrong, only kept to remain compatible with https://ics.hutton.ac.uk/germinate-demo/cactuar-devel/brapi/v1
+	public Call<BrapiListResource<BrapiMarker>> getMarkerDetailsHack(@Path(value="id") String markerDbId);
+	@GET("markers/{id}")
+	public Call<BrapiBaseResource<BrapiMarker>> getMarkerDetails(@Path(value="id") String markerDbId);
+
 	@GET("markers-search")
 	public Call<BrapiListResource<BrapiMarker>> getMarkerInfo(@Query("markerDbIds") Set<String> markerDbIds, @Query("name") Set<String> name, @Query("matchMethod") String matchMethod, @Query("include") String include, @Query("type") String type, @Query("pageSize") String pageSize, @Query("page") String page);
     @POST(value="markers-search")

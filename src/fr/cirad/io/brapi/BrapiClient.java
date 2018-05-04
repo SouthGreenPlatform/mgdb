@@ -167,8 +167,8 @@ public class BrapiClient
 	public boolean hasAlleleMatrixSearchTSV()
 	{ return callsUtils.hasAlleleMatrixSearchTSV(); }
 
-	public boolean hasMapsMapDbId()
-	{ return callsUtils.hasMapsMapDbId(); }
+//	public boolean hasMapsMapDbId()
+//	{ return callsUtils.hasMapsMapDbId(); }
 	
 	public boolean hasPostMarkersSearch()
 	{ return callsUtils.hasPostMarkersSearch(); }
@@ -176,8 +176,8 @@ public class BrapiClient
 	public boolean hasGetMarkersSearch()
 	{ return callsUtils.hasGetMarkersSearch(); }
 	
-	public boolean hasV1_0MarkersSearch()
-	{ return callsUtils.hasV1_0MarkersSearch(); }
+	public boolean hasMarkersDetails()
+	{ return callsUtils.hasMarkersDetails(); }
 
 	public BrapiService getService() {
 		return service;

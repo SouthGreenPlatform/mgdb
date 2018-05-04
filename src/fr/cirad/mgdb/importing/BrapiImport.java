@@ -73,6 +73,7 @@ import fr.cirad.mgdb.model.mongo.subtypes.ReferencePosition;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleGenotype;
 import fr.cirad.mgdb.model.mongo.subtypes.SampleId;
 import fr.cirad.mgdb.model.mongodao.MgdbDao;
+import fr.cirad.tools.AlphaNumericComparator;
 import fr.cirad.tools.Helper;
 import fr.cirad.tools.ProgressIndicator;
 import fr.cirad.tools.mongo.MongoTemplateManager;
@@ -233,7 +234,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 			client.setMapID(mapDbId);
 			
 			Pager markerPager = new Pager();
-			boolean fMayPostMarkersSearch = client.hasPostMarkersSearch(), fMayGetMarkersSearch = client.hasGetMarkersSearch(), fMayGetMarkersSearchV1_0 = client.hasV1_0MarkersSearch();
+			boolean fMayPostMarkersSearch = client.hasPostMarkersSearch(), fMayGetMarkersSearch = client.hasGetMarkersSearch(), fMayGetMarkerDetails = client.hasMarkersDetails();
 
 			Pager mapPager = new Pager();						
 			while (mapPager.isPaging())
@@ -245,7 +246,7 @@ public class BrapiImport extends AbstractGenotypeImport {
 				{
 					if (mapDbId.equals(map.getMapDbId()))
 					{
-						markerPager.setPageSize("" + Math.min(map.getMarkerCount() / 10, fMayPostMarkersSearch ? 200000 : 500));
+						markerPager.setPageSize("" + Math.min(map.getMarkerCount() / 10, fMayPostMarkersSearch ? 200000 : (fMayGetMarkersSearch ? 500 : 1)));
 						break;
 					}
 					LOG.info("Unable to determine marker count for map " + mapDbId);
@@ -298,19 +299,27 @@ public class BrapiImport extends AbstractGenotypeImport {
 						body.put("markerDbIds", variantsToCreate.keySet());
 						body.put("pageSize", Integer.parseInt(subPager.getPageSize()));
 						body.put("page", Integer.parseInt(subPager.getPage()));
-						Response<BrapiListResource<BrapiMarker>> markerReponse;
+						Response markerReponse;
 						if (fMayPostMarkersSearch)
 							markerReponse = service.getMarkerInfo_byPost(body).execute();
 						else if (fMayGetMarkersSearch) // try and remain compatible with older implementations of this call
 							markerReponse = service.getMarkerInfo(variantsToCreate.keySet(), null, null, null, null, subPager.getPageSize(), subPager.getPage()).execute();	// try with GET
-						else if (fMayGetMarkersSearchV1_0)
-							markerReponse = service.getMarkerInfo_v1_0(variantsToCreate.keySet(), null, null, null, null, subPager.getPageSize(), subPager.getPage()).execute();	// try in v1.0 mode ("markers" instead of "markers-search");
+						else if (fMayGetMarkerDetails)	// worst solution: get them one by one
+							markerReponse = service.getMarkerDetails(variantsToCreate.keySet().iterator().next()).execute();	// try in v1.0 mode ("markers" instead of "markers-search");
 						else
 							throw new Exception("Remote BrAPI server does not implement the markers-search call");
 						if (!markerReponse.isSuccessful())
 							throw new Exception(new String(markerReponse.errorBody().bytes()));
 
-						BrapiListResource<BrapiMarker> markerInfo = markerReponse.body();
+						BrapiListResource<BrapiMarker> markerInfo;
+						if (fMayPostMarkersSearch || fMayGetMarkersSearch)
+							markerInfo = ((Response<BrapiListResource<BrapiMarker>>) markerReponse).body();
+						else
+						{
+							BrapiBaseResource<BrapiMarker> markerResource = ((Response<BrapiBaseResource<BrapiMarker>>) markerReponse).body();
+							markerInfo = new BrapiListResource<BrapiMarker>(Arrays.asList(markerResource.getResult()), 0, 1, 1);
+						}
+
 						for (BrapiMarker marker : markerInfo.data())
 						{
 							VariantData variant = variantsToCreate.get(marker.getMarkerDbId());
