@@ -203,7 +203,7 @@ public abstract class AbstractIndividualOrientedExportHandler implements IExport
 			}
 			
 			// write genotypes collected in this chunk to each individual's file
-			for (String individual : sampleIndexToIndividualMapToExport.values())
+			for (String individual : files.keySet())
 			{
 				BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(files.get(individual), true));
 				StringBuffer chunkStringBuffer = individualGenotypeBuffers.get(individual);
