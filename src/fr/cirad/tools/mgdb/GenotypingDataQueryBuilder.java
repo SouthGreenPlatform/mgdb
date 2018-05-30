@@ -754,8 +754,8 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 		                
 		                addFieldsVars.put("dgc" + g, new BasicDBObject("$max", "$r.c" + g));	// dominant genotype count
 		                Object minimumDominantGenotypeCount = mostSameRatio[g] * selectedIndividuals[g].size() / 100f;
-		                if (fMissingDataApplied[g])	// we may need to decrease that by the number of allowed missing genotypes
-		                	minimumDominantGenotypeCount = new BasicDBObject("$subtract", Arrays.asList(minimumDominantGenotypeCount, "$r.m" + g));
+		                if (fMissingDataApplied[g])
+		                	minimumDominantGenotypeCount = new BasicDBObject("$multiply", Arrays.asList("$r.t" + g, mostSameRatio[g] / 100f));
 		                addFieldsIn.put("ed" + g, new BasicDBObject("$gte", Arrays.asList("$$dgc" + g, minimumDominantGenotypeCount)));	// flag telling whether or not we have enough dominant genotypes to reach the required ratio
 		                if (fDiscriminate && g == 1)
 		                {
@@ -801,11 +801,11 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 
         pipeline.add(new BasicDBObject("$project", new BasicDBObject("_id", "$_id" + (!fGotIndividualsWithMultipleSamples ? "." + VariantRunDataId.FIELDNAME_VARIANT_ID : ""))));
 
-//        if (nNextCallCount == 1)
-//        {
-//        	try { System.out.println(new ObjectMapper().defaultPrettyPrintingWriter().writeValueAsString(pipeline.subList(1, pipeline.size()))); }
-//        	catch (Exception ignored) {}
-//        }
+        if (nNextCallCount == 1)
+        {
+        	try { System.out.println(new ObjectMapper().defaultPrettyPrintingWriter().writeValueAsString(pipeline.subList(1, pipeline.size()))); }
+        	catch (Exception ignored) {}
+        }
         return pipeline;
     }
 		
