@@ -533,6 +533,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	                if ((fMissingDataApplied[g] || fMafApplied[g] || (fCompareBetweenGenotypes[g]) && !fMostSameSelected))
 	                {	// count missing genotypes
 	                	if (fGotIndividualsWithMultipleSamples)
+	                		// a genotype is also considered missing if different samples for the same individual have different genotypes 
 	                		missingGenotypeCountList.add(new BasicDBObject("$abs", new BasicDBObject("$cmp", new Object[] {new BasicDBObject("$size", "$$u" + g + "_" + j), 1})));
 	                	else
 	                	{
@@ -615,12 +616,12 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
 	            // keep previously computed fields
 	            if (fMissingDataApplied[g] || fMafApplied[g] || (fCompareBetweenGenotypes[g] && !fMostSameSelected))
 	            	subIn.put("m" + g, "$$m" + g);
-	            if (fMafApplied[g])
-	            	subIn.put("a" + g, "$$a" + g);
+//	            if (fMafApplied[g])
+//	            	subIn.put("a" + g, "$$a" + g);
 	            if (fZygosityRegex[g] || fMostSameSelected)
 	            	subIn.put("d" + g, "$$d" + g);
-	            if (fCompareBetweenGenotypes[g] && !fMostSameSelected)
-	            	subIn.put("dc" + g, "$$dc" + g);
+//	            if (fCompareBetweenGenotypes[g] && !fMostSameSelected)
+//	            	subIn.put("dc" + g, "$$dc" + g);
 
 	            if (fCompareBetweenGenotypes[g] && !fMostSameSelected)
 	            {	// dm = d + m
