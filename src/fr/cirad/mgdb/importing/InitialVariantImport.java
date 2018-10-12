@@ -156,13 +156,16 @@ public class InitialVariantImport {
 						if (!seqAndPos[0].equals("0"))
 							variant.setReferencePosition(new ReferencePosition(seqAndPos[0], Long.parseLong(seqAndPos[1])));
 						
-						String chipList = cells.get(header.indexOf("chip"));
-						if (chipList.length() > 0)
+						if (!variant.getId().toString().startsWith("*"))	// otherwise it's a deprecated variant that we don't want to appear
 						{
-							TreeSet<String> analysisMethods = new TreeSet<String>();
-								for (String chip : chipList.split(";"))
-									analysisMethods.add(chip);
-							variant.setAnalysisMethods(analysisMethods);
+							String chipList = cells.get(header.indexOf("chip"));
+							if (chipList.length() > 0)
+							{
+								TreeSet<String> analysisMethods = new TreeSet<String>();
+									for (String chip : chipList.split(";"))
+										analysisMethods.add(chip);
+								variant.setAnalysisMethods(analysisMethods);
+							}
 						}
 
 						for (int i=0; i<header.size(); i++)
