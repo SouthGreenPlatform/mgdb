@@ -223,7 +223,7 @@ public class GenotypingDataQueryBuilder implements Iterator<List<DBObject>>
        	q.addCriteria(Criteria.where(GenotypingProject.FIELDNAME_EFFECT_ANNOTATIONS + ".0").exists(true));
        	this.projectHasEffectAnnotations = mongoTemplate.findOne(q, GenotypingProject.class) != null;
 
-		this.selectedIndividuals[0] = gsvr.getCallSetIds().size() == 0 ? MgdbDao.getIndividualsInDbOrder(sModule, projId) : gsvr.getCallSetIds();
+		this.selectedIndividuals[0] = gsvr.getCallSetIds().size() == 0 ? MgdbDao.getIndividualsInDbOrder(sModule, projId) : new ArrayList(gsvr.getCallSetIds());
 		this.operator[0] = genotypePatternToQueryMap.get(gsvr.getGtPattern());
 		this.mostSameRatio[0] = gsvr.getMostSameRatio();
 		this.annotationFieldThresholds[0] = gsvr.getAnnotationFieldThresholds();
