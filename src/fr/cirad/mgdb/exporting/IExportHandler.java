@@ -21,7 +21,6 @@ package fr.cirad.mgdb.exporting;
 
 import java.util.List;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Interface IExportHandler.
  */
@@ -29,13 +28,10 @@ public interface IExportHandler
 {
 	
 	/** The Constant nMaxChunkSizeInMb. */
-	static final int nMaxChunkSizeInMb = 5;
+	static final int nMaxChunkSizeInMb = 3;
 	
 	/** The Constant LINE_SEPARATOR. */
 	static final String LINE_SEPARATOR = "\n";
-	
-	/** The Constant NUMBER_OF_SIMULTANEOUS_QUERY_THREADS. */
-	static final int NUMBER_OF_SIMULTANEOUS_QUERY_THREADS = 5;
 	
 	/**
 	 * Gets the export format name.
