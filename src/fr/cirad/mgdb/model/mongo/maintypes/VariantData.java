@@ -522,7 +522,7 @@ public class VariantData
 		}
 		catch (Exception e)
 		{
-			throw new Exception("Variant ID: " + getId(), e);
+			throw new Exception("Variant ID: " + getId() + " - " + e.getMessage());
 		}
 	}
 	
