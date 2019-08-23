@@ -16,6 +16,7 @@
  *******************************************************************************/
 package fr.cirad.mgdb.importing;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -275,7 +276,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 		ArrayList<VariantData> unsavedVariants = new ArrayList<VariantData>();
 		ArrayList<VariantRunData> unsavedRuns = new ArrayList<VariantRunData>();
 		long count = 0;
-		
+
 		// loop over each variation and write to DB
 		Scanner scanner = null;
 		try
@@ -326,7 +327,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 						LOG.warn("Skipping unknown variant: " + providedVariantId);
 					else if (variantId != null && variantId.toString().startsWith("*"))
 					{
-						LOG.warn("\r\nSkipping deprecated variant data: " + providedVariantId);
+						LOG.warn("Skipping deprecated variant data: " + providedVariantId);
 						continue;
 					}
 					else
@@ -404,7 +405,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 					count++;
 				}
 				scanner.close();
-				
+
 				if (existingVariantIDs.size() == 0)
 				{	// we benefit from the fact that it's the first variant import into this database and therefore use bulk insert which is meant to be faster
 					mongoTemplate.insert(unsavedVariants, VariantData.class);
@@ -467,7 +468,7 @@ public class PlinkImport extends AbstractGenotypeImport {
 					Scanner sc = new Scanner(pedFile);
 					while (sc.hasNextLine())
 					{
-						String sLine = sc.nextLine().trim().replaceAll(" +", " ");
+						String sLine = sc.nextLine().trim().replaceAll("\t", " ").replaceAll(" +", " ");
 						if (nCurrentChunkIndex == 0)
 							PlinkEigenstratTool.readIndividualFromPlinkPedLine(sLine, (HashMap<String, String>) userIndividualToPopulationMapToFill);	// important because it fills the map
 						int nFirstPosToRead = sLine.length() - 4*(variants.length - nCurrentChunkIndex * nMaxMarkersReadAtOnce);
