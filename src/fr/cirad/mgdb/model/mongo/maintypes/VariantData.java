@@ -40,7 +40,7 @@ import org.apache.log4j.Logger;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.annotation.Version;
-import org.springframework.data.mongodb.core.index.Indexed;
+//import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -143,7 +143,7 @@ public class VariantData
     private Long version;
 	
 	/** The type. */
-	@Indexed
+//	@Indexed
 	@Field(FIELDNAME_TYPE)
 	private String type;
 
