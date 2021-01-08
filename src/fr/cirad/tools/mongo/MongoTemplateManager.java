@@ -639,4 +639,18 @@ public class MongoTemplateManager implements ApplicationContextAware {
 	public static String getSpecies(String database) {
 		return speciesMap.get(database);
 	}
+
+	public static String getModuleHost(String sModule) {
+		ResourceBundle bundle = ResourceBundle.getBundle(resource, resourceControl);
+		Enumeration<String> bundleKeys = bundle.getKeys();
+		while (bundleKeys.hasMoreElements()) {
+			String key = bundleKeys.nextElement();
+
+			if (sModule.equals(key.replaceAll("\\*", ""))) {
+				String[] datasourceInfo = bundle.getString(key).split(",");
+				return datasourceInfo[0];
+			}
+		}
+		return null;
+	}
 }
